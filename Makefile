@@ -14,5 +14,8 @@ ch5 : ch5.c
 ch6 : ch6.c
 	gcc $< -lm $(CFLAGS) -o $@
 
+ch13 : ch13.c
+	gcc $< -lm $(CFLAGS) -o $@
+
 $(TARGET_EXE) : $@.c
 	gcc $< $(CFLAGS) -o $@
