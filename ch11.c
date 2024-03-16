@@ -190,35 +190,30 @@ int
 write_netpbm_image(FILE* out, const Image_Header* head, const Pixel data[]) {
     
     size_t total = head->height * head->width;
-    switch (head->format) {
 
-        case 5:
+    if (head->format == 5) { 
 
-            for (size_t i = 0; i < total; i++) {
+        for (size_t i = 0; i < total; i++) {
 
-                if (fputc(data[i].gray, out) == EOF) {
-                    
-                    return 1;
-                }
+            if (fputc(data[i].gray, out) == EOF) {
+                
+                return 1;
             }
+        }
 
-            return 0;
+    } else if (head->format == 6) {
 
-        case 6:
-            
-            for (size_t i = 0; i < total; i++) {
+        for (size_t i = 0; i < total; i++) {
+                
+            if (fputc(data[i].rgb.R, out) == EOF ||
+                fputc(data[i].rgb.G, out) == EOF ||
+                fputc(data[i].rgb.B, out) == EOF) {
 
-                if (fputc(data[i].rgb.R, out) == EOF ||
-                    fputc(data[i].rgb.G, out) == EOF ||
-                    fputc(data[i].rgb.B, out) == EOF) {
-
-                    return 1;
-                }
+                return 1;
             }
-    
-        default: return 1;            
+        }
     }
-    
+            
     fflush(out);
     return 0;
 }
@@ -263,6 +258,34 @@ merge_regions_pgm(size_t region[], Region_Data reg_data[], const size_t x,
     x_data->sum.gray += y_data->sum.gray;
     x_data->count += y_data->count;
     x_data->mean.gray = x_data->sum.gray / x_data->count;
+
+    region[y_reg] = x_reg;
+
+    return x_data->mean;
+}
+
+
+Pixel
+merge_regions_ppm(size_t region[], Region_Data reg_data[], const size_t x,
+                  const size_t y) {
+    
+    const size_t x_reg = get_reg(region, x);
+    const size_t y_reg = get_reg(region, y);
+    if (x_reg == y_reg) {
+
+        return reg_data[x_reg].mean;
+    }
+
+    Region_Data* y_data = &reg_data[y_reg];
+    Region_Data* x_data = &reg_data[x_reg];
+
+    x_data->sum.R += y_data->sum.R;
+    x_data->sum.G += y_data->sum.G;
+    x_data->sum.B += y_data->sum.B;
+    x_data->count += y_data->count;
+    x_data->mean.rgb.R = x_data->sum.R / x_data->count;
+    x_data->mean.rgb.G = x_data->sum.G / x_data->count;
+    x_data->mean.rgb.B = x_data->sum.B / x_data->count;
 
     region[y_reg] = x_reg;
 
@@ -319,6 +342,81 @@ segment_pgm(size_t region[], Region_Data reg_data[], const Pixel image[],
 
                     done = false;
                     mean = merge_regions_pgm(region, reg_data, left, i);
+                }
+            }
+        }
+
+        if (done) {
+            
+            row++;
+        }
+    }
+}
+
+
+size_t
+RGB_dist(const RGB_Pixel* const a, const RGB_Pixel* const b) {
+
+    size_t total = 0;
+    total += (a->R > b->R) ? a->R - b->R : b->R - a->R;
+    total += (a->G > b->G) ? a->G - b->G : b->G - a->G;
+    total += (a->B > b->B) ? a->B - b->B : b->B - a->B;
+
+    return total;
+}
+
+
+void
+segment_ppm(size_t region[], Region_Data reg_data[], const Pixel image[],
+            const Image_Header* const head, const unsigned long tolerance) {
+    
+    const size_t rows = head->height;
+    const size_t cols = head->width;
+    const size_t image_size = rows * cols;
+    
+    for (size_t i = 0; i < image_size; i++) {
+        
+        region[i] = i;
+        reg_data[i] = (Region_Data) {
+            .count = 1,
+            .sum = (Pixel_Sum) {
+                .R = image[i].rgb.R,
+                .G = image[i].rgb.G,
+                .B = image[i].rgb.B
+            },
+            .mean = image[i]
+        };
+    }
+
+    for (size_t row = 0; row < rows;) {
+        
+        bool done = true;
+        for (size_t col = 0; col < cols; col++) {
+            
+            size_t i = row * cols + col;
+            Pixel mean = reg_data[get_reg(region, i)].mean;
+
+            if (row && !same_reg(region, i, i - cols)) {
+
+                size_t top = i - cols;
+                Pixel top_mean = reg_data[get_reg(region, top)].mean;
+                size_t diff = RGB_dist(&mean.rgb, &top_mean.rgb); 
+                if (diff <= tolerance) {
+                    
+                    done = false;
+                    mean = merge_regions_ppm(region, reg_data, top, i);
+                }
+            }
+
+            if (col && !same_reg(region, i, i - 1)) {
+                
+                size_t left = i - 1;
+                Pixel left_mean = reg_data[get_reg(region, left)].mean;
+                size_t diff = RGB_dist(&mean.rgb, &left_mean.rgb);
+                if (diff <= tolerance) {
+
+                    done = false;
+                    mean = merge_regions_ppm(region, reg_data, left, i);
                 }
             }
         }
@@ -451,7 +549,7 @@ main (int argc, char* argv[]) {
 
         default:
             
-            fprintf(stderr, "Failed to read the image data.\n");
+            fprintf(stderr, "Cannot read this netpbm format.\n");
             goto fail_reg_data;
             
     }
@@ -462,15 +560,23 @@ main (int argc, char* argv[]) {
         goto fail_reg_data;
     }
 
-    printf("Segmenting the image...\n");
+    printf("Applying POSTERIZE filter...\n");
     
-    if (head.format == 5) {
+    switch (head.format) {
+    
+        case 5:
+            segment_pgm(region, reg_data, image, &head, tolerance);
+            break;
 
-        segment_pgm(region, reg_data, image, &head, tolerance);
+        case 6:
+            segment_ppm(region, reg_data, image, &head, tolerance);
+            break;
     }
 
-    //flatten(image, &head, region, reg_data);
-        
+    flatten(image, &head, region, reg_data);
+    
+    printf("Saving the result...\n");
+
     if (write_netpbm_header(out, &head)) {
 
         fprintf(stderr, "Failed to write the image header to the output.\n");
