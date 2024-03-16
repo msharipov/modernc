@@ -12,8 +12,8 @@
 #include <inttypes.h>
 #include <stdbool.h>
 
-#define IM_MAX_HEIGHT 1000
-#define IM_MAX_WIDTH 1000
+#define IM_MAX_HEIGHT 2000
+#define IM_MAX_WIDTH 2000
 #define IM_NAME_LEN 255
 #define IM_DEPTH 255
 #define HEADER_BUF_LEN 100
