@@ -17,8 +17,28 @@
 #define IM_NAME_LEN 255
 #define IM_DEPTH 255
 #define HEADER_BUF_LEN 100
-#define IM_READ_BLOCK_LEN 100
 #define NUM_STR_LEN 20
+
+typedef struct RGB_Pixel RGB_Pixel;
+struct RGB_Pixel {
+    uint8_t R;
+    uint8_t G;
+    uint8_t B;
+};
+
+typedef union Pixel Pixel;
+union Pixel {
+    RGB_Pixel rgb;
+    uint8_t gray;
+};
+
+typedef struct Pixel_Sum Pixel_Sum;
+struct Pixel_Sum {
+    uint64_t R;
+    uint64_t G;
+    uint64_t B;
+    uint64_t gray;
+};
 
 typedef struct Image_Header Image_Header;
 struct Image_Header {
@@ -30,8 +50,8 @@ struct Image_Header {
 typedef struct Region_Data Region_Data;
 struct Region_Data {
     size_t count;
-    uint64_t sum;
-    uint64_t mean;
+    Pixel_Sum sum;
+    Pixel mean;
 };
 
 
@@ -45,7 +65,7 @@ read_netpbm_header(Image_Header* const head, FILE* im) {
         return 1;
     }
     int16_t file_format = buffer[1] - '0';
-    if (file_format != 5) {
+    if (file_format != 5 && file_format != 6) {
 
         return 1;
     }
@@ -100,7 +120,7 @@ write_netpbm_header(FILE* im, Image_Header* head) {
 
 
 int
-read_pgm_image(uint8_t data[], const size_t height, const size_t width,
+read_pgm_image(Pixel data[], const size_t height, const size_t width,
                FILE* im) {
     
     if (feof(im)) {
@@ -109,35 +129,94 @@ read_pgm_image(uint8_t data[], const size_t height, const size_t width,
     }
 
     size_t bytes_target = width * height;
-    const size_t tail_bytes = bytes_target % IM_READ_BLOCK_LEN;
-    bytes_target -= tail_bytes;
+    uint8_t* temp = (uint8_t*)malloc(sizeof(uint8_t) * bytes_target);
 
-    for (size_t bytes_read = 0; bytes_read < bytes_target; 
-         bytes_read += IM_READ_BLOCK_LEN) {
-        
-        if (IM_READ_BLOCK_LEN != fread(&data[bytes_read], sizeof(uint8_t),
-                                       IM_READ_BLOCK_LEN, im)) {
-            return 1;
-        }
-    }
-
-    if (tail_bytes != fread(&data[bytes_target], sizeof(uint8_t),
-                            tail_bytes, im)) {
+    if (!temp) {
 
         return 1;
     }
+    
+    if (bytes_target != fread(temp, sizeof(uint8_t), bytes_target, im)) {
+        
+        free(temp);
+        return 1;
+    }
 
+    for (size_t i = 0; i < bytes_target; i++) {
+
+        data[i].gray = temp[i];
+    }
+
+    free(temp);
     return 0;
 }
 
 
 int
-write_pgm_image(FILE* out, const Image_Header* head, const uint8_t data[]) {
-    
-    size_t total = head->height * head->width;
-    if (total > fwrite(data, sizeof(uint8_t), total, out)) {
+read_ppm_image(Pixel data[], const size_t height, const size_t width,
+               FILE* im) {
+
+    if (feof(im)) {
 
         return 1;
+    }
+
+    size_t bytes_target = 3 * width * height;
+    uint8_t* temp = (uint8_t*)malloc(sizeof(uint8_t) * bytes_target);
+
+    if (!temp) {
+
+        return 1;
+    }
+    
+    if (bytes_target != fread(temp, sizeof(uint8_t), bytes_target, im)) {
+        
+        free(temp);
+        return 1;
+    }
+    
+    const size_t pixels = width * height;
+    for (size_t i = 0; i < pixels; i++) {
+
+        data[i].rgb = (RGB_Pixel) {temp[3*i], temp[3*i + 1], temp[3*i + 2]};
+    }
+
+    free(temp);
+    return 0;
+}
+
+
+int
+write_netpbm_image(FILE* out, const Image_Header* head, const Pixel data[]) {
+    
+    size_t total = head->height * head->width;
+    switch (head->format) {
+
+        case 5:
+
+            for (size_t i = 0; i < total; i++) {
+
+                if (fputc(data[i].gray, out) == EOF) {
+                    
+                    return 1;
+                }
+            }
+
+            return 0;
+
+        case 6:
+            
+            for (size_t i = 0; i < total; i++) {
+
+                if (fputc(data[i].rgb.R, out) == EOF ||
+                    fputc(data[i].rgb.G, out) == EOF ||
+                    fputc(data[i].rgb.B, out) == EOF) {
+
+                    return 1;
+                }
+            }
+    
+        default: return 1;            
     }
     
     fflush(out);
@@ -167,9 +246,9 @@ same_reg(size_t region[], const size_t x, const size_t y) {
 }
 
 
-size_t
-merge_regions(size_t region[], Region_Data reg_data[], const size_t x,
-              const size_t y) {
+Pixel
+merge_regions_pgm(size_t region[], Region_Data reg_data[], const size_t x,
+                  const size_t y) {
     
     const size_t x_reg = get_reg(region, x);
     const size_t y_reg = get_reg(region, y);
@@ -181,9 +260,9 @@ merge_regions(size_t region[], Region_Data reg_data[], const size_t x,
     Region_Data* y_data = &reg_data[y_reg];
     Region_Data* x_data = &reg_data[x_reg];
 
-    x_data->sum += y_data->sum;
+    x_data->sum.gray += y_data->sum.gray;
     x_data->count += y_data->count;
-    x_data->mean = x_data->sum / x_data->count;
+    x_data->mean.gray = x_data->sum.gray / x_data->count;
 
     region[y_reg] = x_reg;
 
@@ -192,19 +271,19 @@ merge_regions(size_t region[], Region_Data reg_data[], const size_t x,
 
 
 void
-segment_pgm(size_t region[], Region_Data reg_data[], const uint8_t image[],
+segment_pgm(size_t region[], Region_Data reg_data[], const Pixel image[],
             const Image_Header* const head, const unsigned long tolerance) {
     
     const size_t rows = head->height;
     const size_t cols = head->width;
-    const size_t IMAGE_SIZE = rows * cols;
+    const size_t image_size = rows * cols;
     
-    for (size_t i = 0; i < IMAGE_SIZE; i++) {
+    for (size_t i = 0; i < image_size; i++) {
         
         region[i] = i;
         reg_data[i] = (Region_Data) {
             .count = 1,
-            .sum = image[i],
+            .sum = (Pixel_Sum) {.gray = image[i].gray},
             .mean = image[i]
         };
     }
@@ -215,31 +294,31 @@ segment_pgm(size_t region[], Region_Data reg_data[], const uint8_t image[],
         for (size_t col = 0; col < cols; col++) {
             
             size_t i = row * cols + col;
-            size_t mean = reg_data[get_reg(region, i)].mean;
+            Pixel mean = reg_data[get_reg(region, i)].mean;
 
             if (row && !same_reg(region, i, i - cols)) {
 
                 size_t top = i - cols;
-                size_t top_mean = reg_data[get_reg(region, top)].mean;
-                size_t diff = (mean > top_mean) ? mean - top_mean
-                                                : top_mean - mean;
+                Pixel top_mean = reg_data[get_reg(region, top)].mean;
+                size_t diff = (mean.gray > top_mean.gray) ? 
+                    mean.gray - top_mean.gray : top_mean.gray - mean.gray;
                 if (diff <= tolerance) {
                     
                     done = false;
-                    mean = merge_regions(region, reg_data, top, i);
+                    mean = merge_regions_pgm(region, reg_data, top, i);
                 }
             }
 
             if (col && !same_reg(region, i, i - 1)) {
                 
                 size_t left = i - 1;
-                size_t left_mean = reg_data[get_reg(region, left)].mean;
-                size_t diff = (mean > left_mean) ? mean - left_mean
-                                                 : left_mean - mean;
+                Pixel left_mean = reg_data[get_reg(region, left)].mean;
+                size_t diff = (mean.gray > left_mean.gray) ?
+                    mean.gray - left_mean.gray : left_mean.gray - mean.gray;
                 if (diff <= tolerance) {
 
                     done = false;
-                    mean = merge_regions(region, reg_data, left, i);
+                    mean = merge_regions_pgm(region, reg_data, left, i);
                 }
             }
         }
@@ -253,8 +332,8 @@ segment_pgm(size_t region[], Region_Data reg_data[], const uint8_t image[],
 
 
 void
-flatten_pgm(uint8_t image[], const Image_Header* const head,
-            size_t region[], const Region_Data reg_data[]) {
+flatten(Pixel image[], const Image_Header* const head, size_t region[],
+        const Region_Data reg_data[]) {
 
     for (size_t i = 0; i < head->width * head->height; i++) {
 
@@ -291,6 +370,8 @@ main (int argc, char* argv[]) {
         fprintf(stderr, "Failed to open file %s\n", im_name);
         return EXIT_FAILURE;
     }
+    
+    printf("Reading the header...\n");
 
     Image_Header head = {0};
     if (read_netpbm_header(&head, in)) {
@@ -316,9 +397,10 @@ main (int argc, char* argv[]) {
         fprintf(stderr, "Failed to restore position in the file.\n");
         goto fail_close;
     }
+    
+    printf("Loading the source image...\n");
 
-    uint8_t* image = (uint8_t*)malloc(sizeof(uint8_t) * 
-                                      head.width * head.height);
+    Pixel* image = (Pixel*)malloc(sizeof(Pixel) * head.width * head.height);
     if (!image) {
 
         fprintf(stderr, "Failed to allocate memory.\n");
@@ -341,21 +423,53 @@ main (int argc, char* argv[]) {
         goto fail_region;
     }
 
-    if (read_pgm_image(image, head.height, head.width, in)) {
+    FILE* out = (void*)0;
 
-        fprintf(stderr, "Failed to read the image data.\n");
-        goto fail_reg_data;
+    switch (head.format) {
+        
+        case 5:
+
+            if (read_pgm_image(image, head.height, head.width, in)) {
+
+                fprintf(stderr, "Failed to read the image data.\n");
+                goto fail_reg_data;
+            }
+
+            out = fopen("pictures/out.pgm", "wb");
+            break;
+
+        case 6:
+            
+            if (read_ppm_image(image, head.height, head.width, in)) {
+
+                fprintf(stderr, "Failed to read the image data.\n");
+                goto fail_reg_data;
+            }
+
+            out = fopen("pictures/out.ppm", "wb");
+            break;
+
+        default:
+            
+            fprintf(stderr, "Failed to read the image data.\n");
+            goto fail_reg_data;
+            
     }
-    
-    FILE* out = fopen("pictures/out.pgm", "wb");
+
     if (!out) {
 
         fprintf(stderr, "Failed to open the output file.\n");
         goto fail_reg_data;
     }
 
-    segment_pgm(region, reg_data, image, &head, tolerance);
-    flatten_pgm(image, &head, region, reg_data);
+    printf("Segmenting the image...\n");
+    
+    if (head.format == 5) {
+
+        segment_pgm(region, reg_data, image, &head, tolerance);
+    }
+
+    //flatten(image, &head, region, reg_data);
         
     if (write_netpbm_header(out, &head)) {
 
@@ -363,7 +477,7 @@ main (int argc, char* argv[]) {
         goto fail_out;
     }
 
-    if (write_pgm_image(out, &head, image)) {
+    if (write_netpbm_image(out, &head, image)) {
 
         fprintf(stderr, "Failed to write the image data to the output.\n");
         goto fail_out;
