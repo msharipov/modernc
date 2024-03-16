@@ -49,7 +49,6 @@ compare_age(const void* a, const void* b) {
 
     const Person* A = a;
     const Person* B = b;
-    
     return A->age - B->age;
 }
 
@@ -142,14 +141,22 @@ main() {
         Person_print(&users[i]);
     }
     
-    gen_mergesort(users, 8, sizeof(Person), compare_name);
+    if (gen_mergesort(users, 8, sizeof(Person), compare_name)) {
+        
+        fprintf(stderr, "Sorting by name failed!\n");
+        return EXIT_FAILURE;
+    }
     printf("\nSorted by name:\n");
     for(size_t i = 0; i < 8; i++) {
 
         Person_print(&users[i]);
     }
     
-    gen_mergesort(users, 8, sizeof(Person), compare_age);
+    if (gen_mergesort(users, 8, sizeof(Person), compare_age)) {
+
+        fprintf(stderr, "Sorting by age failed!\n");
+        return EXIT_FAILURE;
+    }
     printf("\nSorted by age:\n");
     for(size_t i = 0; i < 8; i++) {
 
