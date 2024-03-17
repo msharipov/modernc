@@ -181,7 +181,7 @@ void
 hex_sequence(const long start, const long stop, int8_t digits[]) {
     
     long double int_part;
-    Powers* powers = (Powers *)malloc(sizeof(Powers)*(stop + 1));
+    Powers* powers = malloc(sizeof(Powers)*(stop + 1));
 
     if (!powers) {
         

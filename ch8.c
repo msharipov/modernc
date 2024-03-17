@@ -38,7 +38,7 @@ typedef struct {
 PrioQueue
 pq_create(size_t max_size) {
 
-    PQEntry* data_ptr = (PQEntry*)malloc(max_size * sizeof(PQEntry));
+    PQEntry* data_ptr = malloc(max_size * sizeof(PQEntry));
 
     return (PrioQueue) {.entries = data_ptr, .count = 0, .MAX_SIZE = max_size};
 }
@@ -163,14 +163,14 @@ dijkstra_path (size_t* path, const size_t x, const size_t y,
     const prio_t NOEDGE = DISCONNECT;
     
     // Keeps track of distances from x to other nodes.
-    prio_t* distances = (prio_t*)malloc(N * sizeof(prio_t));
+    prio_t* distances = malloc(N * sizeof(prio_t));
     if (!distances) {
 
         exit(EXIT_FAILURE);
     }
 
     // Keeps track of the direction of the shortest path from x.
-    size_t* prev = (size_t*)malloc(N * sizeof(size_t));
+    size_t* prev = malloc(N * sizeof(size_t));
     if (!prev) {
 
         free(distances);

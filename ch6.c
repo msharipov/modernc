@@ -83,7 +83,7 @@ addmult_vec(const size_t N, double dest[], const double from[],
 int
 mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
 
-    double* const mat = (double *)malloc(N * N * sizeof(double));
+    double* const mat = malloc(N * N * sizeof(double));
 
     if (mat) {
 

@@ -24,13 +24,13 @@ search(const size_t x, const size_t start, const bool* adjmat,
     
     bool found = false;
 
-    bool* visited = (bool*)calloc(N, sizeof(bool));
+    bool* visited = calloc(N, sizeof(bool));
     if (!visited) {
         
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = (size_t*)malloc(N * sizeof(size_t));
+    size_t* frontier = malloc(N * sizeof(size_t));
     if (!frontier) {
     
         free(visited);
@@ -78,13 +78,13 @@ connected(size_t con[], const size_t start, const bool* adjmat,
     
     size_t count = 0;
     
-    bool* visited = (bool*)calloc(N, sizeof(bool));
+    bool* visited = calloc(N, sizeof(bool));
     if (!visited) {
         
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = (size_t*)malloc(N * sizeof(size_t));
+    size_t* frontier = malloc(N * sizeof(size_t));
     if (!frontier) {
     
         free(visited);
@@ -127,13 +127,13 @@ size_t
 spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
               const size_t N) {
     
-    bool* visited = (bool*)calloc(N, sizeof(bool));
+    bool* visited = calloc(N, sizeof(bool));
     if (!visited) {
         
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = (size_t*)malloc(N * sizeof(size_t));
+    size_t* frontier = malloc(N * sizeof(size_t));
     if (!frontier) {
     
         free(visited);

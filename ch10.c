@@ -208,21 +208,21 @@ main() {
 
     printf("Allocating memory for test data...\n");
 
-    double* short_list = (double*)malloc(2 * SHORT_LIST_LEN * sizeof(double));
+    double* short_list = malloc(2 * SHORT_LIST_LEN * sizeof(double));
     if (!short_list) {
         
         printf("Allocation failed for the short list!\n");
         return EXIT_FAILURE;
     }
     
-    double* mid_list = (double*)malloc(2 * MIDDLE_LIST_LEN * sizeof(double));
+    double* mid_list = malloc(2 * MIDDLE_LIST_LEN * sizeof(double));
     if (!mid_list) {
 
         printf("Allocation failed for the medium list!\n");
         goto fail_mid; 
     }
 
-    double* long_list = (double*)malloc(2 * LONG_LIST_LEN * sizeof(double));
+    double* long_list = malloc(2 * LONG_LIST_LEN * sizeof(double));
     if (!long_list) {
 
         printf("Allocation failed for the long list!\n");

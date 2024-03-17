@@ -27,7 +27,7 @@ struct list_node {
 list_node*
 create_node(const char* const src, const size_t len) {
     
-    list_node* blob = (list_node*)malloc(sizeof(list_node));
+    list_node* blob = malloc(sizeof(list_node));
     if (!blob || len > BLOB_SIZE) {
 
         return (void*)0;

@@ -73,7 +73,7 @@ gen_mergesort(void* arr, const size_t len, const size_t size,
         return 1;
     }
     
-    uint8_t* new_arr = (uint8_t*)malloc(len*size);
+    uint8_t* new_arr = malloc(len*size);
     if (!new_arr) {
 
         return 1;

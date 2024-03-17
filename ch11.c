@@ -129,7 +129,7 @@ read_pgm_image(Pixel data[], const size_t height, const size_t width,
     }
 
     size_t bytes_target = width * height;
-    uint8_t* temp = (uint8_t*)malloc(sizeof(uint8_t) * bytes_target);
+    uint8_t* temp = malloc(sizeof(uint8_t) * bytes_target);
 
     if (!temp) {
 
@@ -162,7 +162,7 @@ read_ppm_image(Pixel data[], const size_t height, const size_t width,
     }
 
     size_t bytes_target = 3 * width * height;
-    uint8_t* temp = (uint8_t*)malloc(sizeof(uint8_t) * bytes_target);
+    uint8_t* temp = malloc(sizeof(uint8_t) * bytes_target);
 
     if (!temp) {
 
@@ -498,14 +498,14 @@ main (int argc, char* argv[]) {
     
     printf("Loading the source image...\n");
 
-    Pixel* image = (Pixel*)malloc(sizeof(Pixel) * head.width * head.height);
+    Pixel* image = malloc(sizeof(Pixel) * head.width * head.height);
     if (!image) {
 
         fprintf(stderr, "Failed to allocate memory.\n");
         goto fail_close;
     }
 
-    size_t* region = (size_t*)malloc(sizeof(size_t) *
+    size_t* region = malloc(sizeof(size_t) *
                                      head.width * head.height);
     if (!region) {
 
@@ -513,7 +513,7 @@ main (int argc, char* argv[]) {
         goto fail_image;
     }
 
-    Region_Data* reg_data = (Region_Data*)malloc(sizeof(Region_Data) *
+    Region_Data* reg_data = malloc(sizeof(Region_Data) *
                                                  head.width * head.height);
     if (!reg_data) {
 
