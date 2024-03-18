@@ -58,3 +58,4 @@ dkms.conf
 
 # Assets
 */assets/*
+bin/*
