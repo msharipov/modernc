@@ -1,10 +1,9 @@
-/*  Copyright 2024 msharipovr@gmail.com
- *
+/* 
  *   TODO:
  *   - search for a word = DONE
  *   - replace a word
- *   - regex matching
- *   - regex search in a string
+ *   - regex matching = DONE
+ *   - regex search in a string = DONE
  *   - query-replace with regex
  *   - extend query-replace with grouping
  */
@@ -17,65 +16,262 @@
 #define BUFFER_LEN 200
 #define FILENAME_LEN 256
 #define PATTERN_LEN 64
+#define REGEX_DATA_LEN 95
 
-// Returns the starting index of the substring {word} in {buf}. If the word
-// is not in the buffer, returns the length of the buffer instead.
-size_t
-find_word(const size_t buf_len, const char *const buf,
-                 const char *const word, const size_t start) {
+enum RegexType {
+    EXACT = 0,
+    RANGE = 1,
+    ANY_CHAR = 2,
+    ANY_SPAN = 3,
+};
 
-    size_t word_len = strlen(word);
-    if (!word_len) {
+typedef struct RegexPattern RegexPattern;
+struct RegexPattern {
+    RegexPattern* next;
+    enum RegexType type;
+    size_t len;
+    char data[REGEX_DATA_LEN + 1];
+    char range_start;
+    char range_end;
+};
 
-        return buf_len;
+typedef struct IndexRange IndexRange;
+struct IndexRange {
+    size_t start;
+    size_t len;
+};
+
+
+RegexPattern*
+regex_parse(const char* const str) {
+
+    if (str[0] < ' ' || str[0] > '~') {
+
+        return (void*)0;
     }
 
-    for (size_t i = start; i + word_len < buf_len; i++) {
+    RegexPattern* regex = calloc(1, sizeof(RegexPattern));
+    if (!regex) {
 
-        if (strncmp(&buf[i], word, word_len)) {
+        return (void*)0;
+    }
+    
+    size_t cur = 0;
+    switch (str[0]) {
 
-            continue;
+        case '*':
+            while (str[++cur] == '*');
+            regex->type = ANY_SPAN;
+            regex->len = cur;
+            return regex;
 
-        } else {
+        case '?':
+            regex->type = ANY_CHAR;
+            regex->len = 1;
+            return regex;
 
-            return i;
+        default:
+            regex->type = EXACT;
+    }
+
+    for (; str[cur] && str[cur] != '*' && str[cur] != '?'; cur++);
+    strncpy(regex->data, str, cur);
+    regex->data[cur] = 0;
+    regex->len = cur;
+
+    return regex;
+}
+
+
+RegexPattern*
+regex_from_str(const char* str) {
+    
+    size_t len = strlen(str);
+    size_t cur = 0;
+    RegexPattern* head = regex_parse(str);
+    if (!head) {
+
+        return head;
+    }
+    
+    cur += head->len;
+    RegexPattern* tail = head;
+    while (cur != len) {
+
+        RegexPattern* next_reg = regex_parse(str + cur);
+        if (!next_reg) {
+
+            return head;
+        }
+        tail->next = next_reg;
+        tail = next_reg;
+        cur += tail->len;
+    }
+
+    return head;
+}
+
+
+void
+regex_print(const RegexPattern* regex) {
+
+    while (regex) {
+
+        printf("Type: %d, Length: %zu Data: %s\n",
+               regex->type, regex->len, regex->data);
+        regex = regex->next;
+    }
+}
+
+
+void
+regex_free(RegexPattern* regex) {
+
+    if (!regex) {
+        
+        return;
+    } 
+
+    while (regex->next) {
+
+        RegexPattern* next = regex->next;
+        free(regex);
+        regex = next;
+    }
+    free(regex);
+}
+
+
+IndexRange regex_first_match(const size_t buf_len, const char buf[],
+                             const RegexPattern* regex, const size_t start);
+
+
+// Returns the length of matching string or 0 if doesn't match
+size_t
+regex_matches(const char buf[], const RegexPattern* const regex) {
+
+    switch (regex->type) {
+                
+        case EXACT:
+            if (strncmp(buf, regex->data, regex->len)) {
+
+                return 0;
+
+            } else {
+                
+                return regex->len;
+            }
+            break;
+
+        case ANY_CHAR:
+            return (buf[0] >= ' ' && buf[0] <= '~');
+
+        case ANY_SPAN:
+            if (!regex->next) {
+
+                return strlen(buf);
+            }
+
+            size_t buf_len = strlen(buf);
+            IndexRange next_range =
+                regex_first_match(buf_len, buf, regex->next, 0);
+
+            if (next_range.start != buf_len) {
+                
+                return next_range.start;
+            }
+            return 0;
+
+        default:
+            return 0;
+            break;
+    }
+}
+
+
+IndexRange
+regex_first_match(const size_t buf_len, const char buf[],
+                  const RegexPattern* regex, const size_t start) {
+    
+    IndexRange range = {buf_len, 0};
+    if (!regex) {
+        
+        return range;
+    }
+    
+    for (size_t i = start; i < buf_len; i++) {
+        
+        size_t cur_start = i;
+        const RegexPattern* current = regex;
+        bool matched = true;
+        while (current) {
+            
+            if (cur_start > buf_len) {
+
+                return range;
+            }
+            
+            size_t cur_len = regex_matches(&buf[cur_start], current);
+            if (cur_len) {
+                
+                cur_start += cur_len;
+                current = current->next;        
+        
+            } else {
+                
+                matched = false;
+                break;
+            }
+        }
+
+        if (matched) {
+            
+            range.start = i;
+            range.len = cur_start - i;
+            return range;
         }
     }
 
-    return buf_len;
+    return range;
 }
 
+
 void
-highlight_found(const size_t buf_len, const char buffer[],
-                const char pattern[], size_t line) {
+highlight_regex(const size_t buf_len, const char buffer[],
+                const RegexPattern* const regex, size_t line) {
     
     bool found_any = false;
-    size_t current_pos = find_word(buf_len, buffer, pattern, 0);
+    IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
+
     size_t old_pos = 0;
-    while (current_pos < buf_len) {
-        
+    while (match.start < buf_len) {
+
         if (!found_any) {
 
             found_any = true;
             printf("%zu:", line);
         }
 
-        for (; old_pos < current_pos; old_pos++) {
+        for (; old_pos < match.start; old_pos++) {
 
             putc(buffer[old_pos], stdout);
         }
-        printf("\x1b[33m%s\x1b[0m", pattern);
+        printf("\x1b[7m");
+        size_t match_end = match.start + match.len;
+        for (; old_pos < match_end; old_pos++) {
 
-        current_pos += strlen(pattern);
-        old_pos = current_pos;
-        current_pos = find_word(buf_len, buffer, pattern, current_pos);
+            putc(buffer[old_pos], stdout);
+        }
+        printf("\x1b[0m");
+
+        match = regex_first_match(buf_len, buffer, regex, old_pos);
     }
-
+    
     if (!found_any) {
 
         return;
     }
-
+    
     for (; old_pos < buf_len; old_pos++) {
 
         putc(buffer[old_pos], stdout);
@@ -96,6 +292,12 @@ main(int argc, char* argv[]) {
 
     char pattern[PATTERN_LEN + 1] = {0};
     strncpy(pattern, argv[1], PATTERN_LEN);
+    RegexPattern* regex = regex_from_str(pattern);
+    if (!regex) {
+
+        fprintf(stderr, "Can't parse regular expression: %s\n", pattern);
+        return EXIT_FAILURE;
+    }
 
     char buffer[BUFFER_LEN] = {0};
     
@@ -110,9 +312,10 @@ main(int argc, char* argv[]) {
 
         if (!replace) {
 
-            highlight_found(current_len, buffer, pattern, line);
+            highlight_regex(current_len, buffer, regex, line);
         }
     }
-
+    
+    regex_free(regex);
     return EXIT_SUCCESS;
 }
