@@ -57,24 +57,47 @@ regex_parse(const char* const str) {
     }
     
     size_t cur = 0;
-    switch (str[0]) {
+    if (str[0] == '\\') {
+        
+        char next_c = str[1];
+        if (next_c < ' ' || next_c > '~') {
 
-        case '*':
-            while (str[++cur] == '*');
-            regex->type = ANY_SPAN;
-            regex->len = cur;
-            return regex;
+            return (void*)0;
+        }
 
-        case '?':
-            regex->type = ANY_CHAR;
-            regex->len = 1;
-            return regex;
+        regex->type = EXACT;
+        regex->data[0] = next_c;
+        regex->len = 2;
+        return regex;
+ 
+    } else {
 
-        default:
-            regex->type = EXACT;
+        switch (str[0]) {
+
+            case '*':
+                while (str[++cur] == '*');
+                regex->type = ANY_SPAN;
+                regex->len = cur;
+                return regex;
+
+            case '?':
+                regex->type = ANY_CHAR;
+                regex->len = 1;
+                return regex;
+
+            default:
+                regex->type = EXACT;
+        }
     }
 
-    for (; str[cur] && str[cur] != '*' && str[cur] != '?'; cur++);
+    for (;;) {
+        
+        char c = str[++cur];
+        if (c < ' ' || c > '~' || c == '*' || c == '?' || c == '\\') {
+
+            break;
+        }
+    }
     strncpy(regex->data, str, cur);
     regex->data[cur] = 0;
     regex->len = cur;
@@ -150,16 +173,17 @@ IndexRange regex_first_match(const size_t buf_len, const char buf[],
 size_t
 regex_matches(const char buf[], const RegexPattern* const regex) {
 
+    size_t len = strlen(regex->data);
     switch (regex->type) {
                 
         case EXACT:
-            if (strncmp(buf, regex->data, regex->len)) {
+            if (strncmp(buf, regex->data, len)) {
 
                 return 0;
 
             } else {
                 
-                return regex->len;
+                return len;
             }
             break;
 
@@ -272,23 +296,20 @@ highlight_regex(const size_t buf_len, const char buffer[],
         return;
     }
     
-    for (; old_pos < buf_len; old_pos++) {
-
-        putc(buffer[old_pos], stdout);
-    }
+    fputs(&buffer[old_pos], stdout);
 }
 
 
 int
 main(int argc, char* argv[]) {
 
-    if (argc != 2 && argc != 4) {
+    if (argc != 2 && argc != 3) {
 
-        fprintf(stderr, "Usage: %s PATTERN [REPLACEMENT OUTPUT]\n", argv[0]);
+        fprintf(stderr, "Usage: %s PATTERN [REPLACEMENT]\n", argv[0]);
         return EXIT_FAILURE;
     }
 
-    bool replace = (argc == 4);
+    bool replace = (argc == 3);
 
     char pattern[PATTERN_LEN + 1] = {0};
     strncpy(pattern, argv[1], PATTERN_LEN);
