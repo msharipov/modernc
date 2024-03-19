@@ -1,4 +1,4 @@
-CFLAGS := -Wall -Werror -Wpedantic
+CFLAGS := -g -Wall -Werror -Wpedantic
 BIN_DIR := bin
 TARGET_SRC := $(wildcard *.c)
 TARGET_EXE := $(TARGET_SRC:%.c=%)
