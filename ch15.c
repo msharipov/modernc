@@ -25,6 +25,11 @@ enum RegexType {
     ANY_SPAN = 3,
 };
 
+enum RangeMode {
+    ADD = 0,
+    SUBTRACT = 1,
+};
+
 typedef struct RegexPattern RegexPattern;
 struct RegexPattern {
     RegexPattern* next;
@@ -41,11 +46,132 @@ struct IndexRange {
     size_t len;
 };
 
+void regex_free(RegexPattern* regex);
+
+IndexRange regex_first_match(const size_t buf_len, const char buf[],
+                             const RegexPattern* regex, const size_t start);
+
+
+bool
+is_valid_char(char c) {
+
+    return (c >= ' ' && c <= '~');
+}
+
+
+void
+regex_fill_class(char* data, const char A, const char B,
+                 enum RangeMode mode) {
+
+    char low = (A > B) ? B : A;
+    char high = (A > B) ? A : B;
+
+    for (char c = low; c <= high; c++) {
+        
+        size_t c_index = c - ' ';
+        switch (mode){
+            
+            case ADD:
+                data[c_index] = 1;
+                break;
+
+            case SUBTRACT:
+                data[c_index] = 0;
+                break;
+
+            default:
+                break;
+        }
+    }
+}
+
+
+// Returns non-zero if range can't be parsed
+int
+regex_parse_range(char* data, const char* str, enum RangeMode mode,
+                  const bool escaped) {
+    
+    if (!str) {
+
+        return 1;
+    }
+
+    while (str[0] && str[0] >= ' ' && str[0] <= '~') {
+
+        switch (str[0]) {
+        
+            case '-':
+                if (!escaped) {
+
+                    return regex_parse_range(data, &str[1], SUBTRACT, false);
+                }
+                break;
+                
+            case '\\':
+                if (!escaped) {
+
+                    return regex_parse_range(data, &str[1], mode, true);
+                }
+                break;
+
+            case ']':
+                if(!escaped) {
+
+                    return 0;
+                }
+        }
+
+        if (str[1] && str[1] == '-') {
+
+            if (str[2] && is_valid_char(str[2])) {
+
+                if (str[2] == '\\') {
+                    
+                    if (str[3] && is_valid_char(str[3])) {
+
+                        regex_fill_class(data, str[0], str[2], mode);
+                        
+                    } else {
+
+                        return 1;
+                    }
+
+                } else if (is_valid_char(str[2])) {
+
+                    regex_fill_class(data, str[0], str[2], mode);
+
+                } else {
+
+                    return 1;
+                }
+
+            } else {
+
+                return 1;
+            }
+            
+        } else {
+            
+            size_t c_index = str[0] - ' ';
+            switch (mode) {
+
+                case ADD:
+                    data[c_index] = 1;
+
+                case SUBTRACT:
+                    data[c_index] = 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
 
 RegexPattern*
 regex_parse(const char* const str) {
 
-    if (str[0] < ' ' || str[0] > '~') {
+    if (str[0] < ' ' || str[0] > '~' || str[0] == ']') {
 
         return (void*)0;
     }
@@ -61,7 +187,8 @@ regex_parse(const char* const str) {
         
         char next_c = str[1];
         if (next_c < ' ' || next_c > '~') {
-
+            
+            regex_free(regex);
             return (void*)0;
         }
 
@@ -85,6 +212,16 @@ regex_parse(const char* const str) {
                 regex->len = 1;
                 return regex;
 
+            case '[':
+                if (regex_parse_range(regex->data, &str[1], ADD, false)) {
+                    
+                    free(regex);
+                    return (void*)0;
+                }
+                regex->type = RANGE;
+                return regex;
+                
+
             default:
                 regex->type = EXACT;
         }
@@ -93,7 +230,8 @@ regex_parse(const char* const str) {
     for (;;) {
         
         char c = str[++cur];
-        if (c < ' ' || c > '~' || c == '*' || c == '?' || c == '\\') {
+        if (c < ' ' || c > '~' || c == '*' || c == '?' || c == '\\' ||
+            c == '[') {
 
             break;
         }
@@ -163,10 +301,6 @@ regex_free(RegexPattern* regex) {
     }
     free(regex);
 }
-
-
-IndexRange regex_first_match(const size_t buf_len, const char buf[],
-                             const RegexPattern* regex, const size_t start);
 
 
 // Returns the length of matching string or 0 if doesn't match
