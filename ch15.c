@@ -87,16 +87,16 @@ regex_fill_class(char* data, const char A, const char B,
 
 
 // Returns non-zero if range can't be parsed
-int
+char*
 regex_parse_range(char* data, const char* str, enum RangeMode mode,
                   const bool escaped) {
     
     if (!str) {
 
-        return 1;
+        return (void*)0;
     }
 
-    while (str[0] && str[0] >= ' ' && str[0] <= '~') {
+    while (str[0] && is_valid_char(str[0])) {
 
         switch (str[0]) {
         
@@ -117,8 +117,16 @@ regex_parse_range(char* data, const char* str, enum RangeMode mode,
             case ']':
                 if(!escaped) {
 
-                    return 0;
+                    return (char*)(str++);
                 }
+                break;
+            
+            case '[':
+                if(!escaped) {
+
+                    return (void*)0;
+                }
+                break;
         }
 
         if (str[1] && str[1] == '-') {
@@ -129,25 +137,29 @@ regex_parse_range(char* data, const char* str, enum RangeMode mode,
                     
                     if (str[3] && is_valid_char(str[3])) {
 
-                        regex_fill_class(data, str[0], str[2], mode);
+                        regex_fill_class(data, str[0], str[3], mode);
+                        str += 4;
+                        continue;
                         
                     } else {
 
-                        return 1;
+                        return (void*)0;
                     }
 
-                } else if (is_valid_char(str[2])) {
+                } else if (str[2] != ']' && str[2] != '-') {
 
                     regex_fill_class(data, str[0], str[2], mode);
+                    str += 3;
+                    continue;
 
                 } else {
 
-                    return 1;
+                    return (void*)0;
                 }
 
             } else {
 
-                return 1;
+                return (void*)0;
             }
             
         } else {
@@ -157,14 +169,17 @@ regex_parse_range(char* data, const char* str, enum RangeMode mode,
 
                 case ADD:
                     data[c_index] = 1;
+                    break;
 
                 case SUBTRACT:
                     data[c_index] = 0;
+                    break;
             }
+            str++;
         }
     }
 
-    return 1;
+    return (void*)0;
 }
 
 
@@ -198,11 +213,15 @@ regex_parse(const char* const str) {
         return regex;
  
     } else {
-
+        
+        char* range_end = 0;
         switch (str[0]) {
 
             case '*':
-                while (str[++cur] == '*');
+                do {
+                    cur++;
+                }
+                while (str[cur] == '*' || str[cur] == '?');
                 regex->type = ANY_SPAN;
                 regex->len = cur;
                 return regex;
@@ -213,12 +232,14 @@ regex_parse(const char* const str) {
                 return regex;
 
             case '[':
-                if (regex_parse_range(regex->data, &str[1], ADD, false)) {
+                range_end = regex_parse_range(regex->data, &str[1], ADD, false);
+                if (range_end < str) {
                     
                     free(regex);
                     return (void*)0;
                 }
                 regex->type = RANGE;
+                regex->len = range_end + 1 - str;  // Safe because of preceding check
                 return regex;
                 
 
@@ -278,8 +299,22 @@ regex_print(const RegexPattern* regex) {
 
     while (regex) {
 
-        printf("Type: %d, Length: %zu Data: %s\n",
-               regex->type, regex->len, regex->data);
+        printf("Type: %d, Length: %zu Data:", regex->type, regex->len);
+        if (regex->type == RANGE) {
+
+            for (size_t i = 0; i < REGEX_DATA_LEN; i++) {
+                
+                if (regex->data[i]){
+                    
+                    printf("%c", (char)(i + ' '));
+                }
+            }
+
+        } else {
+            
+            printf("%s", regex->data);
+        }
+        putc('\n', stdout);
         regex = regex->next;
     }
 }
@@ -308,6 +343,9 @@ size_t
 regex_matches(const char buf[], const RegexPattern* const regex) {
 
     size_t len = strlen(regex->data);
+    size_t buf_len = strlen(buf);
+    IndexRange next_range = {0};
+
     switch (regex->type) {
                 
         case EXACT:
@@ -327,23 +365,95 @@ regex_matches(const char buf[], const RegexPattern* const regex) {
         case ANY_SPAN:
             if (!regex->next) {
 
-                return strlen(buf);
+                return buf_len;
             }
 
-            size_t buf_len = strlen(buf);
-            IndexRange next_range =
-                regex_first_match(buf_len, buf, regex->next, 0);
+            next_range = regex_first_match(buf_len, buf, regex->next, 0);
 
             if (next_range.start != buf_len) {
-                
+
                 return next_range.start;
             }
             return 0;
+        
+        case RANGE:
+            if (!regex->next) {
+                
+                size_t count = 0;
+                for (; count < buf_len; count++) {
+                    
+                    char c = buf[count];
+                    if (!is_valid_char(c)) {
+
+                        break;
+                    }
+                    size_t c_index = c - ' ';
+                    if (!regex->data[c_index]) {
+
+                        break;
+                    }
+                }
+                return count;
+            }
+
+            RegexPattern* next = regex->next;
+            size_t count = 0;
+            size_t next_start = 0;
+            switch (next->type) {
+
+                case EXACT:
+                    next_range = regex_first_match(buf_len, buf, next, 0);
+                    if (next_range.start != buf_len) {
+                        
+                        for (size_t i = 0; i < next_range.start; i++) {
+                            
+                            size_t c_index = buf[i] - ' ';
+                            if (!is_valid_char(buf[i]) || !regex->data[c_index]) {
+    
+                                return 0;
+                            }
+                        }
+                        return next_range.start;
+                    }
+                    return 0;
+
+                case ANY_CHAR:
+                case ANY_SPAN:
+                    if (is_valid_char(buf[0])) {
+
+                        size_t c_index = buf[0] - ' ';
+                        return !!regex->data[c_index];
+                    }
+                    return 0;
+
+                case RANGE:
+                    while (is_valid_char(buf[count])) {
+                        
+                        size_t c_index = buf[count] - ' ';
+                        if (count && next->data[c_index]) {
+
+                            next_start = c_index;
+                            break;
+                        }
+                        count++;
+                    }
+                    count = 0;
+                    while (count < next_start) {
+
+                        size_t c_index = buf[count] - ' ';
+                        if (!regex->data[c_index]) {
+
+                            return 0;
+                        }
+                    }
+                    return next_start;
+            }
+            break;
 
         default:
-            return 0;
             break;
     }
+    return 0;
 }
 
 
