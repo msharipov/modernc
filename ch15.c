@@ -1,7 +1,6 @@
 /* 
  *   TODO:
  *   - search for a word = DONE
- *   - replace a word
  *   - regex matching = DONE
  *   - regex search in a string = DONE
  *   - query-replace with regex
@@ -86,7 +85,7 @@ regex_fill_class(char* data, const char A, const char B,
 }
 
 
-// Returns non-zero if range can't be parsed
+// Returns a null pointer if range can't be parsed
 char*
 regex_parse_range(char* data, const char* str, enum RangeMode mode,
                   const bool escaped) {
@@ -541,6 +540,14 @@ highlight_regex(const size_t buf_len, const char buffer[],
     }
     
     fputs(&buffer[old_pos], stdout);
+}
+
+
+void
+regex_replace(const size_t buf_len, const char buffer[],
+                const RegexPattern* const regex, size_t line) {
+
+    IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
 }
 
 
