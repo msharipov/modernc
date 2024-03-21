@@ -3,8 +3,7 @@
  *   - search for a word = DONE
  *   - regex matching = DONE
  *   - regex search in a string = DONE
- *   - query-replace with regex
- *   - extend query-replace with grouping
+ *   - query-replace with regex = DONE
  */
 
 #include <stdbool.h>
@@ -14,7 +13,11 @@
 
 #define BUFFER_LEN 200
 #define FILENAME_LEN 256
-#define PATTERN_LEN 64
+#define PATTERN_LEN 128
+#define REPLACEMENT_LEN PATTERN_LEN
+
+// This size is chose to have one space for each ASCII character between
+// ' ' and '~', inclusively
 #define REGEX_DATA_LEN 95
 
 enum RegexType {
@@ -545,9 +548,28 @@ highlight_regex(const size_t buf_len, const char buffer[],
 
 void
 regex_replace(const size_t buf_len, const char buffer[],
-                const RegexPattern* const regex, size_t line) {
+              const RegexPattern* const regex, const char replacement[]) {
 
     IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
+    if (match.start == buf_len) {
+
+        fputs(buffer, stdout);
+        return;
+    }
+
+    size_t old_pos = 0;
+    while (match.start < buf_len) {
+
+        for (; old_pos < match.start; old_pos++) {
+
+            putc(buffer[old_pos], stdout);
+        }
+        old_pos += match.len;
+        fputs(replacement, stdout);
+        match = regex_first_match(buf_len, buffer, regex, old_pos);
+    }
+
+    fputs(&buffer[old_pos], stdout);
 }
 
 
@@ -571,6 +593,12 @@ main(int argc, char* argv[]) {
         return EXIT_FAILURE;
     }
 
+    char replacement[REPLACEMENT_LEN + 1] = {0};
+    if (replace) {
+        
+        strncpy(replacement, argv[2], REPLACEMENT_LEN);
+    }
+
     char buffer[BUFFER_LEN] = {0};
     
     for (size_t line = 1; fgets(buffer, BUFFER_LEN, stdin); line++) {
@@ -585,6 +613,10 @@ main(int argc, char* argv[]) {
         if (!replace) {
 
             highlight_regex(current_len, buffer, regex, line);
+
+        } else {
+
+            regex_replace(current_len, buffer, regex, replacement);
         }
     }
     
