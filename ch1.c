@@ -6,7 +6,8 @@
 #include <string.h>
 #include <stdint.h>
 
-void print_array(const double * const arr, const size_t n) {
+void
+print_array(const double * const arr, const size_t n) {
     
     for (size_t i = 0; i < n; i++) {
         printf("[%zu]: %f\n", i, arr[i]);
@@ -14,7 +15,8 @@ void print_array(const double * const arr, const size_t n) {
 }
 
 
-void fill_rand(double * const arr, const size_t n, const unsigned seed) {
+void
+fill_rand(double * const arr, const size_t n, const unsigned seed) {
     
     srand(seed);
     for (size_t i = 0; i < n; i++) {
@@ -23,7 +25,8 @@ void fill_rand(double * const arr, const size_t n, const unsigned seed) {
 }
 
 
-bool is_sorted(const double * arr, const size_t n) {
+bool
+is_sorted(const double * arr, const size_t n) {
 
     for (size_t i = 0; i < n - 1; i++) {
         if (arr[i] > arr[i + 1]) {
@@ -35,7 +38,8 @@ bool is_sorted(const double * arr, const size_t n) {
 }
 
 
-void swap(double * const arr, const size_t a, const size_t b) {
+void
+swap(double * const arr, const size_t a, const size_t b) {
 
     const double temp = arr[a];
     arr[a] = arr[b];
@@ -43,7 +47,8 @@ void swap(double * const arr, const size_t a, const size_t b) {
 }
 
 
-void quick_sort(double * const arr, const size_t len) {
+void
+quick_sort(double * const arr, const size_t len) {
     
     if (len < 3) {
         if (len == 2 && arr[0] > arr[1]) {
@@ -81,7 +86,8 @@ void quick_sort(double * const arr, const size_t len) {
 }
 
 
-void merge_sort(double * const arr, const size_t len) {
+void
+merge_sort(double * const arr, const size_t len) {
     
     if (len < 3) {
         if (len == 2 && arr[0] > arr[1]) {
@@ -140,7 +146,8 @@ void merge_sort(double * const arr, const size_t len) {
 }
 
 
-int main(const int argc, const char * argv[]) {
+int
+main(const int argc, const char * argv[]) {
     
     uint16_t seed = 1;
     
