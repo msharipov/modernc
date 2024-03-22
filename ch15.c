@@ -507,7 +507,7 @@ regex_first_match(const size_t buf_len, const char buf[],
 
 
 void
-highlight_regex(const size_t buf_len, const char buffer[],
+regex_highlight(const size_t buf_len, const char buffer[],
                 const RegexPattern* const regex, size_t line) {
     
     bool found_any = false;
@@ -612,7 +612,7 @@ main(int argc, char* argv[]) {
 
         if (!replace) {
 
-            highlight_regex(current_len, buffer, regex, line);
+            regex_highlight(current_len, buffer, regex, line);
 
         } else {
 
