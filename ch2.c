@@ -10,6 +10,7 @@ enum Num_Deriv_Error{
     UNSTABLE = 2,
 };
 
+typedef struct Num_Deriv_Result Num_Deriv_Result;
 struct Num_Deriv_Result{
     
     double value;
@@ -17,7 +18,7 @@ struct Num_Deriv_Result{
 };
 
 
-struct Num_Deriv_Result 
+Num_Deriv_Result 
 num_deriv(double(*f)(double), const double x, const double dx) {
     
     const double h = fabs(dx/2);
@@ -27,7 +28,7 @@ num_deriv(double(*f)(double), const double x, const double dx) {
     const double f4 = f(x + h);
     const double f5 = f(x + 2*h);
     
-    struct Num_Deriv_Result result = {0, SUCCESS};
+    Num_Deriv_Result result = {0, SUCCESS};
 
     if (fpclassify(f1) == FP_NAN || fpclassify(f1) == FP_INFINITE ||
         fpclassify(f2) == FP_NAN || fpclassify(f2) == FP_INFINITE ||
@@ -113,7 +114,7 @@ int
 main() {
 
     const double EPS = 1e-9;
-    struct Num_Deriv_Result res;
+    Num_Deriv_Result res;
     const char * err_txt[] = {"Solution is valid.",
                               "Derivative does not exist.",
                               "Derivative is unstable."};
