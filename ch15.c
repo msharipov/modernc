@@ -16,7 +16,7 @@
 #define PATTERN_LEN 128
 #define REPLACEMENT_LEN PATTERN_LEN
 
-// This size is chose to have one space for each ASCII character between
+// This size is chosen to have one space for each ASCII character between
 // ' ' and '~', inclusively
 #define REGEX_DATA_LEN 95
 
