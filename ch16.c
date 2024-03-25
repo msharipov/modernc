@@ -1,9 +1,7 @@
 /* 
  *   TODO:
- *   - search for a word = DONE
- *   - regex matching = DONE
- *   - regex search in a string = DONE
- *   - query-replace with regex = DONE
+ *   - print diagnostics to stderr = DONE
+ *   - count occurences of a regexp
  */
 
 #include <stdbool.h>
@@ -507,34 +505,49 @@ regex_first_match(const size_t buf_len, const char buf[],
 
 
 void
-regex_highlight(const size_t buf_len, const char buffer[],
-                const RegexPattern* const regex, size_t line) {
+regex_match_in_line(const size_t buf_len, const char buffer[],
+                const RegexPattern* const regex, size_t line,
+                IndexRange found_matches[]) {
     
-    bool found_any = false;
+    size_t matches_count = 0;
     IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
 
     size_t old_pos = 0;
     while (match.start < buf_len) {
 
+        found_matches[matches_count++] = match;
+        old_pos = match.start + match.len;
+        match = regex_first_match(buf_len, buffer, regex, old_pos);
+    }
+    found_matches[matches_count++] = match;
+}
+
+
+void
+highlight_ranges(const size_t buf_len, const char buffer[],
+                 const size_t line, const IndexRange* ranges) {
+    
+    bool found_any = false;
+    size_t old_pos = 0;
+    for (; ranges->start < buf_len; ranges++) {
+
         if (!found_any) {
 
             found_any = true;
-            printf("%zu:", line);
+            fprintf(stderr, "%5zu:", line);
         }
 
-        for (; old_pos < match.start; old_pos++) {
+        for (; old_pos < ranges->start; old_pos++) {
 
-            putc(buffer[old_pos], stdout);
+            putc(buffer[old_pos], stderr);
         }
-        printf("\x1b[7m");
-        size_t match_end = match.start + match.len;
-        for (; old_pos < match_end; old_pos++) {
+        fprintf(stderr, "\x1b[7m");
+        size_t range_end = ranges->start + ranges->len;
+        for (; old_pos < range_end; old_pos++) {
 
-            putc(buffer[old_pos], stdout);
+            putc(buffer[old_pos], stderr);
         }
-        printf("\x1b[0m");
-
-        match = regex_first_match(buf_len, buffer, regex, old_pos);
+        fprintf(stderr, "\x1b[0m");
     }
     
     if (!found_any) {
@@ -542,34 +555,47 @@ regex_highlight(const size_t buf_len, const char buffer[],
         return;
     }
     
-    fputs(&buffer[old_pos], stdout);
+    fputs(&buffer[old_pos], stderr);
 }
 
 
-void
+size_t
 regex_replace(const size_t buf_len, const char buffer[],
-              const RegexPattern* const regex, const char replacement[]) {
-
-    IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
-    if (match.start == buf_len) {
-
+              const char replacement[], IndexRange* matches,
+              const size_t line) {
+    
+    size_t offset = 0;
+    if (matches->start >= buf_len) {
+        
         fputs(buffer, stdout);
-        return;
+        return offset;
     }
 
     size_t old_pos = 0;
-    while (match.start < buf_len) {
+    const size_t repl_len = strlen(replacement);
+    fprintf(stderr, "%5zu:", line);
+    for (; matches->start < buf_len; matches++) {
 
-        for (; old_pos < match.start; old_pos++) {
-
+        for (; old_pos < matches->start; old_pos++) {
+            
             putc(buffer[old_pos], stdout);
+            putc(buffer[old_pos], stderr);
         }
-        old_pos += match.len;
+        matches->start = old_pos + offset;
+        old_pos += matches->len;
+        offset += repl_len - matches->len;
+        matches->len = repl_len;
         fputs(replacement, stdout);
-        match = regex_first_match(buf_len, buffer, regex, old_pos);
+        fputs("\x1b[7m", stderr);
+        fputs(replacement, stderr);
+        fputs("\x1b[0m", stderr);
     }
 
     fputs(&buffer[old_pos], stdout);
+    fputs(&buffer[old_pos], stderr);
+    fputc('\n', stderr);
+
+    return offset;
 }
 
 
@@ -600,7 +626,8 @@ main(int argc, char* argv[]) {
     }
 
     char buffer[BUFFER_LEN] = {0};
-    
+    IndexRange found_matches[BUFFER_LEN] = {0};
+
     for (size_t line = 1; fgets(buffer, BUFFER_LEN, stdin); line++) {
         
         size_t current_len = strlen(buffer);
@@ -610,13 +637,12 @@ main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        if (!replace) {
+        regex_match_in_line(current_len, buffer, regex, line, found_matches);
+        highlight_ranges(current_len, buffer, line, found_matches);
+        if (replace) {
 
-            regex_highlight(current_len, buffer, regex, line);
-
-        } else {
-
-            regex_replace(current_len, buffer, regex, replacement);
+            regex_replace(current_len, buffer, replacement, found_matches,
+                          line);
         }
     }
     
