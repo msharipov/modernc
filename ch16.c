@@ -1,7 +1,7 @@
 /* 
  *   TODO:
  *   - print diagnostics to stderr = DONE
- *   - count occurences of a regexp
+ *   - count occurences of a regexp = DONE
  */
 
 #include <stdbool.h>
@@ -627,6 +627,7 @@ main(int argc, char* argv[]) {
 
     char buffer[BUFFER_LEN] = {0};
     IndexRange found_matches[BUFFER_LEN] = {0};
+    size_t total_matches = 0;
 
     for (size_t line = 1; fgets(buffer, BUFFER_LEN, stdin); line++) {
         
@@ -639,13 +640,22 @@ main(int argc, char* argv[]) {
 
         regex_match_in_line(current_len, buffer, regex, line, found_matches);
         highlight_ranges(current_len, buffer, line, found_matches);
+        
+        for (size_t i = 0; found_matches[i].start < current_len; i++) {
+
+            total_matches++;
+        }
+
         if (replace) {
 
             regex_replace(current_len, buffer, replacement, found_matches,
                           line);
         }
+
     }
     
+    fprintf(stderr, "Regex matches found: %zu\n", total_matches);
+
     regex_free(regex);
     return EXIT_SUCCESS;
 }
