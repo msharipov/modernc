@@ -12,8 +12,16 @@
 #include <stdbool.h>
 
 #define BLOB_SIZE 100
+#define PATTERN_LEN 128
+#define REPLACEMENT_LEN PATTERN_LEN
+#define MAX_RANGES 100
 
-enum Lines_Error {
+enum RegexType {
+    EXACT = 0,
+    CLASS = 1,
+};
+
+enum LinesError {
     LINES_SUCCESS = 0,
     LINES_TOOLONG = 1,
     LINES_MEMFAIL = 2,
@@ -26,6 +34,28 @@ struct list_node {
     wchar_t content[BLOB_SIZE + 1];
 };
 
+typedef struct IndexRange IndexRange;
+struct IndexRange {
+    size_t start;
+    size_t len;
+};
+
+typedef struct WCharRange WCharRange;
+struct WCharRange {
+    wchar_t first;
+    wchar_t last;
+};
+
+typedef struct RegexPattern RegexPattern;
+struct RegexPattern {
+    RegexPattern* next;
+    enum RegexType type;
+    size_t len; 
+    WCharRange included[MAX_RANGES];
+    size_t included_len;
+    WCharRange excluded[MAX_RANGES];
+    size_t excluded_len;
+};
 
 list_node*
 create_node(const wchar_t* const src, const size_t len) {
@@ -274,7 +304,7 @@ split_node(list_node** const node_ptr, const wchar_t divider) {
 }
 
 
-enum Lines_Error
+enum LinesError
 arrange_into_lines(list_node* blob) {
 
     while (blob) {
