@@ -1,16 +1,23 @@
 /* 
 *   TODO:
-*   - extend text processor to use wide characters
+*   - extend text processor to use wide characters = DONE
 *   - add regex search/replace
 *   - add regex grouping
 */
 
 #include <wchar.h>
+#include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
 
 #define BLOB_SIZE 100
+
+enum Lines_Error {
+    LINES_SUCCESS = 0,
+    LINES_TOOLONG = 1,
+    LINES_MEMFAIL = 2,
+};
 
 typedef struct list_node list_node;
 struct list_node {
@@ -32,8 +39,8 @@ create_node(const wchar_t* const src, const size_t len) {
     blob->prev = (void*)0;
     blob->next = (void*)0;
 
-    wcsncpy(blob->content, src, BLOB_SIZE);
-    blob->content[BLOB_SIZE] = '\0';
+    wcsncpy(blob->content, src, len);
+    blob->content[len] = L'\0';
     
     return blob;
 }
@@ -129,7 +136,7 @@ print_as_lines(const list_node* const start) {
     const list_node* current = start;
     while (current) {
 
-        printf("%ls\n", current->content);
+        wprintf(L"%Ls\n", current->content);
         current = current->next;
     }
 }
@@ -165,20 +172,25 @@ load_text(const wchar_t* const src, const size_t len) {
 }
 
 
-list_node*
+size_t
 condense(list_node* const first) {
 
     list_node* second = first->next;
     
     if (!second) {
         
-        return (void*)0;
+        return 0;
     }
     
     size_t len1 = wcslen(first->content);
     size_t len2 = wcslen(second->content);
     size_t free_space = BLOB_SIZE - len1;
     
+    if (!free_space) {
+
+        return BLOB_SIZE;
+    }
+
     wcsncpy(&(first->content)[len1], second->content, free_space);
 
     if (len2 <= free_space) {
@@ -192,7 +204,7 @@ condense(list_node* const first) {
         while ((*dest++ = *src++));
     }
 
-    return first;
+    return (free_space > len2) ? (len1 + len2) : BLOB_SIZE;
 }
 
 
@@ -204,29 +216,45 @@ node_contains(const list_node* const node, const wchar_t c) {
 
 
 list_node*
-split_node(list_node* const node, const wchar_t divider) {
+split_node(list_node** const node_ptr, const wchar_t divider) {
+    
+    list_node* node = *node_ptr;
+
+    if (!divider) {
+
+        return node;
+    }
 
     wchar_t* divider_pos = wcschr(node->content, divider);
     if (!divider_pos) {
 
-        return (void*)0;
-    }
-
-    if (divider_pos == &(node->content)[BLOB_SIZE - 1]) {
-
-        *divider_pos = L'\0';
         return node;
     }
 
     if (divider_pos == node->content) {
 
+        if (!divider_pos[1]) {
+
+            list_node* next = node->next;
+            remove_node(node);
+            *node_ptr = next;
+            return (void*)0;
+        }
+        
         wchar_t* dest = divider_pos;
         wchar_t* src = dest + 1;
-        while((*dest++ = *src++));
+        while ((*dest++ = *src++));
+        return node;
+    }
+
+    if (!divider_pos[1]) {
+        
+        *divider_pos = L'\0';
         return node;
     }
     
-    list_node* new_node = create_node(divider_pos + 1, wcslen(divider_pos + 1));
+    list_node* new_node = create_node(divider_pos + 1,
+                                      wcslen(divider_pos + 1));
     if (!new_node) {
 
         return (void*)0;
@@ -246,37 +274,72 @@ split_node(list_node* const node, const wchar_t divider) {
 }
 
 
-int
-arrange_into_lines(list_node* blobs) {
+enum Lines_Error
+arrange_into_lines(list_node* blob) {
 
-    while (blobs->next) {
-
-        condense(blobs);
-        if (node_contains(blobs, L'\n')) {
-            
-            split_node(blobs, L'\n');
-            blobs = blobs->next;
+    while (blob) {
         
-        } else if (wcslen(blobs->content) == BLOB_SIZE){
+        wchar_t* linebreak = wcschr(blob->content, L'\n');
+        if (!linebreak) {
 
-            return 1;
+            if (!blob->next) {
+                
+                return LINES_SUCCESS;
+            }
+            
+            const size_t len = wcslen(blob->content);
+            if (len < BLOB_SIZE) {
+                
+                condense(blob);
+                continue;
+            }
+
+            if (blob->next->content[0] == L'\n') {
+
+                list_node* next = blob->next;
+                if (!split_node(&next, L'\n') && next) {
+
+                    return LINES_MEMFAIL;
+                }
+
+                blob = blob->next;
+                continue;
+            
+            } else {
+
+                return LINES_TOOLONG;
+            }
+        }
+        
+        if (!split_node(&blob, L'\n')) {
+
+            return (blob) ? LINES_MEMFAIL : LINES_SUCCESS;
+        }
+        
+        if (!wcschr(blob->content, L'\n')) {
+            
+            blob = blob->next;
         }
     }
 
-    return 0;
+    return LINES_SUCCESS;
 }
 
 
 int main() {
     
-    wchar_t limerick[300] =
+    setlocale(LC_ALL, "");
+    wchar_t text[1000] =
         L"There was a young lady named Bright,\n"
         L"Whose speed was far faster than light.\n"
         L"She set out one day\n"
         L"In a relative way\n"
-        L"And returned on the previous night.\n";
-    
-    list_node* blobs = load_text(limerick, 300);
+        L"And returned on the previous night.\n"
+        L"\n"
+        L"Я сижу в темноте. И она не хуже\n"
+        L"В комнате, чем темнота снаружи.\n";
+
+    list_node* blobs = load_text(text, wcslen(text));
     if (!blobs) {
 
         fprintf(stderr, "Failed to load text!\n");
@@ -284,14 +347,28 @@ int main() {
     }
     
     print_as_lines(blobs);
-    if (arrange_into_lines(blobs)) {
+    
+    switch (arrange_into_lines(blobs)) {
+      
+      case LINES_SUCCESS:
+        break;
 
-        fprintf(stderr, "One of the lines is too long (>%d characters)!\n", BLOB_SIZE);
-        free_list(blobs);
-        return EXIT_FAILURE;
+      case LINES_TOOLONG:
+        fprintf(stderr, "One of the lines is too long "
+                        "(>%d characters)!\n", BLOB_SIZE);
+        goto FAIL;
+
+      case LINES_MEMFAIL:
+        fprintf(stderr, "Memory allocation failure.\n");
+        goto FAIL;
     }
+
     print_as_lines(blobs);    
 
     free_list(blobs);
     return EXIT_SUCCESS;
+
+  FAIL:
+    free_list(blobs);
+    return EXIT_FAILURE;
 }
