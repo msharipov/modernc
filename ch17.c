@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #define BLOB_SIZE 100
 #define PATTERN_LEN 128
@@ -56,6 +57,31 @@ struct RegexPattern {
     WCharRange excluded[MAX_RANGES];
     size_t excluded_len;
 };
+
+void
+highlight_ranges(const size_t buf_len, const wchar_t buffer[],
+                 const IndexRange* ranges) {
+    
+    size_t old_pos = 0;
+    for (; ranges->start < buf_len; ranges++) {
+
+        for (; old_pos < ranges->start; old_pos++) {
+
+            putwc(buffer[old_pos], stderr);
+        }
+
+        fwprintf(stderr, L"\x1b[7m");
+        size_t range_end = ranges->start + ranges->len;
+        for (; old_pos < range_end; old_pos++) {
+
+            putwc(buffer[old_pos], stderr);
+        }
+        fwprintf(stderr, L"\x1b[0m");
+    }
+    
+    fputws(&buffer[old_pos], stderr);
+}
+
 
 list_node*
 create_node(const wchar_t* const src, const size_t len) {
@@ -393,7 +419,16 @@ int main() {
         goto FAIL;
     }
 
-    print_as_lines(blobs);    
+    print_as_lines(blobs);
+    IndexRange ranges[2] = {
+        {.start = 3, .len = 5},
+        {.start = SIZE_MAX, .len = 0},
+    };
+    highlight_ranges(BLOB_SIZE, blobs->next->content, ranges);
+    fputwc(L'\n', stderr);
+    highlight_ranges(BLOB_SIZE,
+                     blobs->next->next->next->next->next->content, ranges);
+    fputwc(L'\n', stderr);
 
     free_list(blobs);
     return EXIT_SUCCESS;
