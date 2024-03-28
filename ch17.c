@@ -104,6 +104,7 @@ regex_is_special(const wchar_t c) {
       case L'-':
       case L'\\':
       case L'^':
+      case L'+':
         return true;
 
       default:
@@ -159,15 +160,21 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
 
         return (void*)0;
     }
-    if (esc == UNESCAPED &&
-        (c == L']' || c == L'}' || c == L'{' || c == L'-' || c == L'^')) {
 
+    if (esc == UNESCAPED) switch (c) {
+
+      case L']':
+      case L'}':
+      case L'{':
+      case L'-':
+      case L'^':
         return (void*)0;
-    }
 
-    if (esc == UNESCAPED && (c == L'\\')) {
-
+      case L'\\':
         return regex_parse(&str[1], end, ESCAPED);
+
+      case L'+':
+        return regex_parse(&str[1], end, esc);
     }
 
     RegexPattern* regex = calloc(1, sizeof(RegexPattern));
@@ -177,6 +184,11 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
     }
 
     // TODO: Handle ? and [] as classes
+    if (c == L'?') {
+
+        regex->type = CLASS;
+
+    }
     
     regex->type = EXACT;
     size_t i = 0;
