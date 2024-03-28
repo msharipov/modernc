@@ -567,8 +567,13 @@ main(int argc, char* argv[]) {
         L"In a relative way\n"
         L"And returned on the previous night.\n"
         L"\n"
-        L"Я сижу в темноте. И она не хуже\n"
-        L"В комнате, чем темнота снаружи.\n";
+        L"Теплое место, но улицы ждут\n"
+        L"Отпечатков наших ног.\n"
+        L"Звёздная пыль на сапогах.\n"
+        L"Мягкое кресло, клетчатый плед,\n"
+        L"Не нажатый вовремя курок.\n"
+        L"Солнечный день в ослепительных снах.\n"
+        L"线粒体是细胞的动力源\n";
 
     list_node* blobs = load_text(text, wcslen(text));
     if (!blobs) {
@@ -607,16 +612,9 @@ main(int argc, char* argv[]) {
     }
 
     print_as_lines(blobs);
-    IndexRange ranges[BLOB_SIZE] = {
-        {.start = 3, .len = 5},
-    };
-    fputwc(L'\n', stderr);
-    highlight_ranges(BLOB_SIZE,
-                     blobs->next->next->next->next->next->content, ranges);
-    fputwc(L'\n', stderr);
-
-    free_list(blobs);
+    
     regex_free(regex);
+    free_list(blobs);
     return EXIT_SUCCESS;
   
   FAIL_REGEX:
