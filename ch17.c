@@ -573,6 +573,7 @@ main(int argc, char* argv[]) {
         L"Мягкое кресло, клетчатый плед,\n"
         L"Не нажатый вовремя курок.\n"
         L"Солнечный день в ослепительных снах.\n"
+        // The mitochondria is the powerhouse of the cell
         L"线粒体是细胞的动力源\n";
 
     list_node* blobs = load_text(text, wcslen(text));
