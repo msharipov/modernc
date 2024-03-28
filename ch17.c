@@ -6,11 +6,12 @@
 */
 
 #include <wchar.h>
+#include <wctype.h>
 #include <locale.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include <stdint.h>
+#include <string.h>
 
 #define BLOB_SIZE 100
 #define PATTERN_LEN 128
@@ -26,6 +27,11 @@ enum LinesError {
     LINES_SUCCESS = 0,
     LINES_TOOLONG = 1,
     LINES_MEMFAIL = 2,
+};
+
+enum RegexEscape {
+    UNESCAPED = 0,
+    ESCAPED = 1,
 };
 
 typedef struct list_node list_node;
@@ -52,18 +58,20 @@ struct RegexPattern {
     RegexPattern* next;
     enum RegexType type;
     size_t len; 
+    wchar_t exact[BLOB_SIZE + 1];
     WCharRange included[MAX_RANGES];
     size_t included_len;
     WCharRange excluded[MAX_RANGES];
     size_t excluded_len;
 };
 
+
 void
 highlight_ranges(const size_t buf_len, const wchar_t buffer[],
                  const IndexRange* ranges) {
     
     size_t old_pos = 0;
-    for (; ranges->start < buf_len; ranges++) {
+    for (; ranges->start < buf_len || !ranges->len; ranges++) {
 
         for (; old_pos < ranges->start; old_pos++) {
 
@@ -80,6 +88,154 @@ highlight_ranges(const size_t buf_len, const wchar_t buffer[],
     }
     
     fputws(&buffer[old_pos], stderr);
+}
+
+
+bool
+regex_is_special(const wchar_t c) {
+
+    switch(c) {
+
+      case L']':
+      case L'[':
+      case L'}':
+      case L'{':
+      case L'?':
+      case L'-':
+      case L'\\':
+      case L'^':
+        return true;
+
+      default:
+        return false;
+    }
+}
+
+
+void
+regex_print(const RegexPattern* regex) {
+
+    while (regex) {
+
+        fwprintf(stderr, L"Type: ");
+        if (regex->type == EXACT) {
+            
+            fwprintf(stderr, L"EXACT, Pattern:\"%ls\"\n", regex->exact);
+        
+        } else {
+
+            fwprintf(stderr, L"CLASS\n");
+        }
+
+        regex = regex->next;
+    }
+}
+
+
+void
+regex_free(RegexPattern* regex) {
+
+    if (!regex) {
+        
+        return;
+    } 
+
+    while (regex->next) {
+
+        RegexPattern* next = regex->next;
+        free(regex);
+        regex = next;
+    }
+    free(regex);
+}
+
+
+RegexPattern*
+regex_parse(const wchar_t* const str, const wchar_t** end,
+            enum RegexEscape esc) {
+    
+    const wchar_t c = str[0];
+    if (iswcntrl(c)) {
+
+        return (void*)0;
+    }
+    if (esc == UNESCAPED &&
+        (c == L']' || c == L'}' || c == L'{' || c == L'-' || c == L'^')) {
+
+        return (void*)0;
+    }
+
+    if (esc == UNESCAPED && (c == L'\\')) {
+
+        return regex_parse(&str[1], end, ESCAPED);
+    }
+
+    RegexPattern* regex = calloc(1, sizeof(RegexPattern));
+    if (!regex) {
+
+        return (void*)0;
+    }
+
+    // TODO: Handle ? and [] as classes
+    
+    regex->type = EXACT;
+    size_t i = 0;
+    size_t len = 0;
+    for (; !iswcntrl(str[i]); i++) {
+        
+        if (esc == ESCAPED) {
+
+            regex->exact[i] = str[i];
+            len++;
+            esc = UNESCAPED;
+            continue;
+        }
+
+        if (str[i] == L'\\') {
+
+            esc = ESCAPED;
+            continue;
+        }
+
+        if (regex_is_special(str[i])) {
+
+            break;
+        }
+
+        regex->exact[i] = str[i];
+        len++;
+    }
+
+    *end = &str[i];
+    regex->len = len;
+    return regex;
+}
+
+
+RegexPattern*
+regex_from_str(const wchar_t* str) {
+    
+    size_t len = wcslen(str);
+    const wchar_t* end = str;
+    RegexPattern* head = regex_parse(end, &end, UNESCAPED);
+    if (!head) {
+
+        return head;
+    }
+    
+    RegexPattern* tail = head;
+    while ((end - str) < len) {
+    
+        RegexPattern* next_reg = regex_parse(end, &end, UNESCAPED);
+        if (!next_reg) {
+
+            return head;
+        }
+        tail->next = next_reg;
+        tail = next_reg;
+    }
+
+    return head;
 }
 
 
@@ -382,7 +538,14 @@ arrange_into_lines(list_node* blob) {
 }
 
 
-int main() {
+int
+main(int argc, char* argv[]) {
+
+    if (argc != 2) {
+        
+        fprintf(stderr, "Missing a search regex!\n");
+        return EXIT_FAILURE;
+    }
     
     setlocale(LC_ALL, "");
     wchar_t text[1000] =
@@ -402,6 +565,18 @@ int main() {
         return EXIT_FAILURE;
     }
     
+    wchar_t regex_str[BLOB_SIZE + 1] = {0};
+    char regex_raw[4*(BLOB_SIZE + 1)] = {0};
+    strncpy(regex_raw, argv[1], 4*(BLOB_SIZE + 1));
+    mbstowcs(regex_str, regex_raw, BLOB_SIZE);
+    RegexPattern* regex = regex_from_str(regex_str);
+    if (!regex) {
+
+        fprintf(stderr, "Could not parse the search regex!\n");
+        goto FAIL;
+    }
+    regex_print(regex);
+    
     print_as_lines(blobs);
     
     switch (arrange_into_lines(blobs)) {
@@ -412,26 +587,28 @@ int main() {
       case LINES_TOOLONG:
         fprintf(stderr, "One of the lines is too long "
                         "(>%d characters)!\n", BLOB_SIZE);
-        goto FAIL;
+        goto FAIL_REGEX;
 
       case LINES_MEMFAIL:
         fprintf(stderr, "Memory allocation failure.\n");
-        goto FAIL;
+        goto FAIL_REGEX;
     }
 
     print_as_lines(blobs);
-    IndexRange ranges[2] = {
+    IndexRange ranges[BLOB_SIZE] = {
         {.start = 3, .len = 5},
-        {.start = SIZE_MAX, .len = 0},
     };
-    highlight_ranges(BLOB_SIZE, blobs->next->content, ranges);
     fputwc(L'\n', stderr);
     highlight_ranges(BLOB_SIZE,
                      blobs->next->next->next->next->next->content, ranges);
     fputwc(L'\n', stderr);
 
     free_list(blobs);
+    regex_free(regex);
     return EXIT_SUCCESS;
+  
+  FAIL_REGEX:
+    regex_free(regex);
 
   FAIL:
     free_list(blobs);
