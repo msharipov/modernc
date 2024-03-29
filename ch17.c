@@ -364,7 +364,10 @@ attach_node(list_node* const parent, const wchar_t* const src,
         return (void*)0;
     }
 
-    parent->next = new_node;
+    if (parent) {
+        
+        parent->next = new_node;
+    }
     new_node->prev = parent;
 
     return new_node;
@@ -461,6 +464,11 @@ load_text(const wchar_t* const src, const size_t len) {
     }
 
     list_node* const head = create_node(src, BLOB_SIZE);
+    if (!head) {
+
+        return (void*)0;
+    }
+
     read += BLOB_SIZE;
     list_node* tail = head;
 
@@ -477,6 +485,37 @@ load_text(const wchar_t* const src, const size_t len) {
     }
 
     return head;
+}
+
+
+list_node*
+load_from_file(FILE* input) {
+    
+    wchar_t buffer[BLOB_SIZE + 1] = {0};
+    wchar_t c = 0;
+    size_t read = 0;
+    list_node* tail = NULL;
+
+    while ((c = fgetwc(input)) != EOF) {
+
+        buffer[read] = c;
+        read++;
+        if (read == BLOB_SIZE) {
+
+            read = 0;
+            list_node* old_tail = tail;
+            tail = attach_node(old_tail, buffer, BLOB_SIZE);
+            if (!tail) {
+
+                free_list(find_head(old_tail));
+                return (void*)0;
+            }
+        }
+    }
+    
+    tail = attach_node(tail, buffer, read);
+
+    return find_head(tail);
 }
 
 
@@ -657,23 +696,8 @@ main(int argc, char* argv[]) {
     }
     
     setlocale(LC_ALL, "");
-    wchar_t text[1000] =
-        L"There was a young lady named Bright,\n"
-        L"Whose speed was far faster than light.\n"
-        L"She set out one day\n"
-        L"In a relative way\n"
-        L"And returned on the previous night.\n"
-        L"\n"
-        L"Теплое место, но улицы ждут\n"
-        L"Отпечатков наших ног.\n"
-        L"Звёздная пыль на сапогах.\n"
-        L"Мягкое кресло, клетчатый плед,\n"
-        L"Не нажатый вовремя курок.\n"
-        L"Солнечный день в ослепительных снах.\n"
-        // The mitochondria is the powerhouse of the cell
-        L"线粒体是细胞的动力源\n";
 
-    list_node* blobs = load_text(text, wcslen(text));
+    list_node* blobs = load_from_file(stdin);
     if (!blobs) {
 
         fprintf(stderr, "Failed to load text!\n");
@@ -691,8 +715,6 @@ main(int argc, char* argv[]) {
         goto FAIL;
     }
     regex_print(regex);
-    
-    print_as_lines(blobs);
     
     switch (arrange_into_lines(blobs)) {
       
