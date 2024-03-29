@@ -71,7 +71,8 @@ highlight_ranges(const size_t buf_len, const wchar_t buffer[],
                  const IndexRange* ranges) {
     
     size_t old_pos = 0;
-    for (; ranges->start < buf_len || !ranges->len; ranges++) {
+
+    for (; ranges->start < buf_len && ranges->len; ranges++) {
 
         for (; old_pos < ranges->start; old_pos++) {
 
@@ -248,6 +249,89 @@ regex_from_str(const wchar_t* str) {
     }
 
     return head;
+}
+
+
+size_t
+regex_match(const size_t str_len, const wchar_t* str,
+            const RegexPattern* regex, size_t pos) {
+    
+    size_t start = pos;
+    while (regex) {
+
+        if (pos >= str_len) {
+
+            return 0;
+        }
+        
+        if (regex->type == EXACT) {
+
+            if (wcsncmp(&str[pos], regex->exact, regex->len)) {
+            
+                return 0;
+            
+            } else {
+
+                pos += regex->len;
+            }
+        }
+
+        // TODO: implement class matching
+        regex = regex->next;
+    }
+
+    return pos - start;
+}
+
+
+IndexRange
+regex_next_in_str(const size_t str_len, const wchar_t* str,
+                   const RegexPattern* regex, size_t start) {
+    
+    IndexRange span = {0};
+
+    if (!regex) {
+
+        return span;
+    }
+
+    for (; start < str_len; start++) {
+
+        size_t match_len = regex_match(str_len, str, regex, start);
+        if (match_len) {
+
+            span.start = start;
+            span.len = match_len;
+            return span;
+        }
+    }
+
+    return span;
+}
+
+
+void
+regex_search_str(const wchar_t* str, const RegexPattern* regex,
+                 IndexRange* const matches, const size_t max_matches) {
+
+    size_t count = 0;
+    size_t str_len = wcslen(str);
+    size_t pos = 0;
+
+    while (pos < str_len && count < max_matches) {
+    
+        IndexRange match = regex_next_in_str(str_len, str, regex, pos);
+
+        matches[count].len = match.len;
+        matches[count].start = match.start;
+        if (!match.len) {
+
+            return;
+        }
+    
+        pos = match.len + match.start;
+        count++;
+    } 
 }
 
 
@@ -550,10 +634,23 @@ arrange_into_lines(list_node* blob) {
 }
 
 
+void
+search_text(const list_node* text, const RegexPattern* regex) {
+    
+    IndexRange matches[BLOB_SIZE + 1] = {0};
+    for (; text; text = text->next) {
+    
+        regex_search_str(text->content, regex, matches, BLOB_SIZE);
+        highlight_ranges(wcslen(text->content), text->content, matches);
+        fwprintf(stderr, L"\n");
+    }
+}
+
+
 int
 main(int argc, char* argv[]) {
 
-    if (argc != 2) {
+    if (argc != 2 && argc != 3) {
         
         fprintf(stderr, "Missing a search regex!\n");
         return EXIT_FAILURE;
@@ -611,8 +708,12 @@ main(int argc, char* argv[]) {
         fprintf(stderr, "Memory allocation failure.\n");
         goto FAIL_REGEX;
     }
+    
+    fwprintf(stderr, L"\n");
+    if (argc == 2) {
 
-    print_as_lines(blobs);
+        search_text(blobs, regex);
+    }
     
     regex_free(regex);
     free_list(blobs);
