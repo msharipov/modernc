@@ -126,7 +126,27 @@ regex_print(const RegexPattern* regex) {
         
         } else {
 
-            fwprintf(stderr, L"CLASS\n");
+            fwprintf(stderr, L"CLASS, Included:");
+            for (size_t i = 0; i < regex->included_len; i++) {
+                
+                if (i) {
+
+                    fwprintf(stderr, L",");
+                }
+                fwprintf(stderr, L"\'%lc\'-\'%lc\'",
+                         regex->included[i].first, regex->included[i].last);
+            }
+            fwprintf(stderr, L"\n             Excluded:");
+            for (size_t i = 0; i < regex->excluded_len; i++) {
+                
+                if (i) {
+
+                    fwprintf(stderr, L",");
+                }
+                fwprintf(stderr, L"\'%lc\'-\'%lc\'",
+                         regex->excluded[i].first, regex->excluded[i].last);
+            }
+            fwprintf(stderr, L"\n");
         }
 
         regex = regex->next;
@@ -188,7 +208,12 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
     if (c == L'?') {
 
         regex->type = CLASS;
-
+        regex->len = 1;
+        regex->included[0].first = L' ';
+        regex->included[0].last = WCHAR_MAX;
+        regex->included_len = 1;
+        (*end)++;
+        return regex;
     }
     
     regex->type = EXACT;
