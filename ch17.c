@@ -291,18 +291,25 @@ regex_class_parse(const wchar_t* const str, const wchar_t** end,
             *end = &str[cur + shift];
             return 1;
         }
+        
+        wchar_t first = str[cur];
+        if (first > last) {
+
+            first = last;
+            last = str[cur];
+        }
 
         if (status == INCLUDE) {
                 
             size_t count = regex->included_len;
-            regex->included[count].first = str[cur];
+            regex->included[count].first = first;
             regex->included[count].last = last;
             regex->included_len++;
         
         } else {
             
             size_t count = regex->excluded_len;
-            regex->excluded[count].first = str[cur];
+            regex->excluded[count].first = first;
             regex->excluded[count].last = last;
             regex->excluded_len++;
         }
