@@ -224,7 +224,7 @@ regex_class_parse(const wchar_t* const str, const wchar_t** end,
                         return 0;
                     }
                     
-                    wchar_t* len_start = (wchar_t*) &str[cur + 1];
+                    wchar_t* len_start = (wchar_t*) &(*end)[1];
                     wchar_t* len_end = len_start;
                     size_t len = wcstoull(len_start, &len_end, 10);
 
@@ -354,7 +354,8 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
     if (esc == UNESCAPED && c == L'[') {
 
         if (regex_class_parse(&str[1], end, regex)) {
-
+            
+            fwprintf(stderr, L"Invalid regex:\"%ls\"\n", *end);
             free(regex);
             return (void*)0;
         }
