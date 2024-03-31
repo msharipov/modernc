@@ -441,6 +441,35 @@ regex_from_str(const wchar_t* str) {
 }
 
 
+bool
+wc_in_class(const wchar_t c, const RegexPattern* const class) {
+    
+    bool included = false;
+    for (size_t i = 0; i < class->included_len; i++) {
+
+        if (c >= class->included[i].first && c <= class->included[i].last) {
+
+            included = true;
+            break;
+        }
+    }
+    if (!included) {
+
+        return false;
+    }
+
+    for (size_t i = 0; i < class->excluded_len; i++) {
+
+        if (c >= class->excluded[i].first && c <= class->excluded[i].last) {
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 size_t
 regex_match(const size_t str_len, const wchar_t* str,
             const RegexPattern* regex, size_t pos) {
@@ -463,10 +492,43 @@ regex_match(const size_t str_len, const wchar_t* str,
 
                 pos += regex->len;
             }
+            
+            regex = regex->next;
+            continue;
         }
 
-        // TODO: implement class matching
-        regex = regex->next;
+        if (regex->type == CLASS) {
+            
+            // If the class has definite length
+            if (regex->len != SIZE_MAX - 1) {
+                
+                for (size_t i = 0; i < regex->len; i++) {
+
+                    if (!wc_in_class(str[i + pos], regex) ||
+                        i + pos == str_len) {
+
+                        return 0;
+                    }
+                }
+
+                pos += regex->len;
+                regex = regex->next;
+                continue;
+            }
+
+            if (!regex->next) {
+                
+                for (; pos < str_len; pos++) {
+                    
+                    if (!wc_in_class(str[pos], regex)) {
+                        
+                        break;
+                    }
+                }
+
+                return str_len - 1;
+            } 
+        }
     }
 
     return pos - start;
