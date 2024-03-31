@@ -156,9 +156,19 @@ regex_print(const RegexPattern* regex) {
         } else {
 
             fwprintf(stderr, L"CLASS, Included:");
-            print_wchar_ranges(regex->included, regex->included_len);
+            if (regex->included[0].first == L' ' &&
+                regex->included[0].last == WCHAR_MAX) {
+
+                fwprintf(stderr, L" ALL");
+
+            } else {
+
+                print_wchar_ranges(regex->included, regex->included_len);
+            }
+
             fwprintf(stderr, L"\n             Excluded:");
             print_wchar_ranges(regex->excluded, regex->excluded_len);
+
             fwprintf(stderr, L"\n             Length: ");
             if (regex->len == SIZE_MAX - 1) {
 
