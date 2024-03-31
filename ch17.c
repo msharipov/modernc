@@ -397,7 +397,7 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
         
         if (esc == ESCAPED) {
 
-            regex->exact[i] = str[i];
+            regex->exact[len] = str[i];
             len++;
             esc = UNESCAPED;
             continue;
