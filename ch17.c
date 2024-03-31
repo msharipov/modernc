@@ -151,7 +151,7 @@ regex_print(const RegexPattern* regex) {
         fwprintf(stderr, L"Type: ");
         if (regex->type == EXACT) {
             
-            fwprintf(stderr, L"EXACT, Pattern:\"%ls\"\n", regex->exact);
+            fwprintf(stderr, L"EXACT, Pattern: \"%ls\"\n", regex->exact);
         
         } else {
 
@@ -721,7 +721,7 @@ print_as_lines(const list_node* const start) {
     const list_node* current = start;
     while (current) {
 
-        wprintf(L"%Ls\n", current->content);
+        fwprintf(stderr, L"%ls", current->content);
         current = current->next;
     }
 }
@@ -837,50 +837,27 @@ node_contains(const list_node* const node, const wchar_t c) {
 
 
 list_node*
-split_node(list_node** const node_ptr, const wchar_t divider) {
+split_node(list_node* const node, const wchar_t divider) {
     
-    list_node* node = *node_ptr;
-
     if (!divider) {
 
         return node;
     }
 
     wchar_t* divider_pos = wcschr(node->content, divider);
-    if (!divider_pos) {
+    if (!divider_pos || !divider_pos[1]) {
 
         return node;
     }
 
-    if (divider_pos == node->content) {
-
-        if (!divider_pos[1]) {
-
-            list_node* next = node->next;
-            remove_node(node);
-            *node_ptr = next;
-            return (void*)0;
-        }
-        
-        wchar_t* dest = divider_pos;
-        wchar_t* src = dest + 1;
-        while ((*dest++ = *src++));
-        return node;
-    }
-
-    if (!divider_pos[1]) {
-        
-        *divider_pos = L'\0';
-        return node;
-    }
-    
-    list_node* new_node = create_node(divider_pos + 1,
-                                      wcslen(divider_pos + 1));
+    list_node* new_node =
+        create_node(&divider_pos[1], wcslen(&divider_pos[1]));
     if (!new_node) {
 
         return (void*)0;
     }
-    *divider_pos = L'\0';
+
+    divider_pos[1] = L'\0';
 
     if (node->next) {
 
@@ -902,11 +879,6 @@ arrange_into_lines(list_node* blob) {
         
         wchar_t* linebreak = wcschr(blob->content, L'\n');
         if (!linebreak) {
-
-            if (!blob->next) {
-                
-                return LINES_SUCCESS;
-            }
             
             const size_t len = wcslen(blob->content);
             if (len < BLOB_SIZE) {
@@ -915,31 +887,18 @@ arrange_into_lines(list_node* blob) {
                 continue;
             }
 
-            if (blob->next->content[0] == L'\n') {
-
-                list_node* next = blob->next;
-                if (!split_node(&next, L'\n') && next) {
-
-                    return LINES_MEMFAIL;
-                }
-
-                blob = blob->next;
-                continue;
-            
-            } else {
-
-                return LINES_TOOLONG;
-            }
+            return LINES_TOOLONG;
         }
-        
-        if (!split_node(&blob, L'\n')) {
 
-            return (blob) ? LINES_MEMFAIL : LINES_SUCCESS;
-        }
-        
-        if (!wcschr(blob->content, L'\n')) {
-            
+        if (!linebreak[1]) {
+
             blob = blob->next;
+            continue;
+        }
+        
+        if (!split_node(blob, L'\n')) {
+
+            return LINES_MEMFAIL;
         }
     }
 
@@ -955,7 +914,6 @@ search_text(const list_node* text, const RegexPattern* regex) {
     
         regex_search_str(text->content, regex, matches, BLOB_SIZE);
         highlight_ranges(wcslen(text->content), text->content, matches);
-        fwprintf(stderr, L"\n");
     }
 }
 
