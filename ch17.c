@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdint.h>
 
 #define BLOB_SIZE 100
 #define PATTERN_LEN 128
@@ -32,6 +33,11 @@ enum LinesError {
 enum RegexEscape {
     UNESCAPED = 0,
     ESCAPED = 1,
+};
+
+enum ClassParseStatus {
+    INCLUDE = 0,
+    EXCLUDE = 1,
 };
 
 typedef struct list_node list_node;
@@ -97,18 +103,18 @@ regex_is_special(const wchar_t c) {
 
     switch(c) {
 
-      case L']':
-      case L'[':
-      case L'}':
-      case L'{':
-      case L'?':
-      case L'-':
-      case L'\\':
-      case L'^':
-      case L'+':
+    case L']':
+    case L'[':
+    case L'}':
+    case L'{':
+    case L'?':
+    case L'-':
+    case L'\\':
+    case L'^':
+    case L'+':
         return true;
 
-      default:
+    default:
         return false;
     }
 }
@@ -146,7 +152,7 @@ regex_print(const RegexPattern* regex) {
                 fwprintf(stderr, L"\'%lc\'-\'%lc\'",
                          regex->excluded[i].first, regex->excluded[i].last);
             }
-            fwprintf(stderr, L"\n");
+            fwprintf(stderr, L"\n             Length: %zu\n", regex->len);
         }
 
         regex = regex->next;
@@ -172,6 +178,129 @@ regex_free(RegexPattern* regex) {
 }
 
 
+int
+regex_class_parse(const wchar_t* const str, const wchar_t** end, 
+                  RegexPattern* const regex) {
+    
+    enum RegexEscape esc = UNESCAPED;
+    enum ClassParseStatus status = INCLUDE;
+    size_t cur = 0;
+    regex->type = CLASS;
+
+    while (str[cur] && !iswcntrl(str[cur])) {
+        
+        if (esc == UNESCAPED) {
+
+            switch (str[cur]) {
+              
+            case L'\\':
+                esc = ESCAPED;
+                cur++;
+                continue;
+
+            case L']':
+                *end = &str[cur + 1];
+                if ((*end)[0] == L'{') {
+
+                    if ((*end)[1] == L'*' && (*end)[2] == L'}') {
+                        
+                        regex->len = SIZE_MAX - 1;
+                        *end += 3;
+                        return 0;
+                    }
+                    
+                    wchar_t* len_start = (wchar_t*) &str[cur + 1];
+                    wchar_t* len_end = len_start;
+                    size_t len = wcstoull(len_start, &len_end, 10);
+
+                    if (!len || !len_end || len_end == len_start ||
+                        len_end[0] != L'}') {
+                        
+                        *end = len_end;
+                        return 1;
+                    }
+
+                    regex->len = len;
+                    *end = &len_end[1];
+                    return 0;
+                }
+                regex->len = 1;
+                return 0;
+
+            case L'^':
+                status = EXCLUDE;
+                if (!regex->included_len) {
+                    
+                    regex->included[0].first = L' ';
+                    regex->included[0].last = WCHAR_MAX;
+                    regex->included_len++;
+                }
+                cur++;
+                continue;
+
+            case L'?':
+            case L'[':
+            case L'}':
+            case L'{':
+            case L'+':
+            case L'-':
+                *end = &str[cur];
+                return 1;
+              
+            default:
+                break;
+            }
+        }
+
+        size_t shift = 0;
+        wchar_t last = str[cur];
+        if (str[cur + 1] == L'-') {
+            
+            shift = 2;
+            last = str[cur + 2];
+            if (last == L'\\') {
+                
+                last = str[cur + 3];
+                shift++;
+            }
+
+            if (!last) {
+                
+                *end = &str[cur + 1];
+                return 1;
+            }
+        }
+
+        if (iswcntrl(last)) {
+            
+            *end = &str[cur + shift];
+            return 1;
+        }
+
+        if (status == INCLUDE) {
+                
+            size_t count = regex->included_len;
+            regex->included[count].first = str[cur];
+            regex->included[count].last = last;
+            regex->included_len++;
+        
+        } else {
+            
+            size_t count = regex->excluded_len;
+            regex->excluded[count].first = str[cur];
+            regex->excluded[count].last = last;
+            regex->excluded_len++;
+        }
+        
+        cur += shift + 1;
+        esc = UNESCAPED;
+    }
+    
+    *end = &str[cur];
+    return 1;
+}
+
+
 RegexPattern*
 regex_parse(const wchar_t* const str, const wchar_t** end,
             enum RegexEscape esc) {
@@ -184,18 +313,21 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
 
     if (esc == UNESCAPED) switch (c) {
 
-      case L']':
-      case L'}':
-      case L'{':
-      case L'-':
-      case L'^':
+    case L']':
+    case L'}':
+    case L'{':
+    case L'-':
+    case L'^':
         return (void*)0;
 
-      case L'\\':
+    case L'\\':
         return regex_parse(&str[1], end, ESCAPED);
 
-      case L'+':
+    case L'+':
         return regex_parse(&str[1], end, esc);
+      
+    default:
+        break;
     }
 
     RegexPattern* regex = calloc(1, sizeof(RegexPattern));
@@ -204,8 +336,17 @@ regex_parse(const wchar_t* const str, const wchar_t** end,
         return (void*)0;
     }
 
-    // TODO: Handle ? and [] as classes
-    if (c == L'?') {
+    if (esc == UNESCAPED && c == L'[') {
+
+        if (regex_class_parse(&str[1], end, regex)) {
+
+            free(regex);
+            return (void*)0;
+        }
+        return regex;
+    }
+
+    if (esc == UNESCAPED && c == L'?') {
 
         regex->type = CLASS;
         regex->len = 1;
@@ -743,15 +884,15 @@ main(int argc, char* argv[]) {
     
     switch (arrange_into_lines(blobs)) {
       
-      case LINES_SUCCESS:
+    case LINES_SUCCESS:
         break;
 
-      case LINES_TOOLONG:
+    case LINES_TOOLONG:
         fprintf(stderr, "One of the lines is too long "
                         "(>%d characters)!\n", BLOB_SIZE);
         goto FAIL_REGEX;
 
-      case LINES_MEMFAIL:
+    case LINES_MEMFAIL:
         fprintf(stderr, "Memory allocation failure.\n");
         goto FAIL_REGEX;
     }
