@@ -224,8 +224,8 @@ regex_class_parse(const wchar_t* const str, const wchar_t** end,
                         return 0;
                     }
                     
-                    wchar_t* len_start = (wchar_t*) &(*end)[1];
-                    wchar_t* len_end = len_start;
+                    const wchar_t* len_start = &(*end)[1];
+                    wchar_t* len_end = (wchar_t*) len_start;
                     size_t len = wcstoull(len_start, &len_end, 10);
 
                     if (!len || !len_end || len_end == len_start ||
