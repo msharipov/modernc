@@ -470,6 +470,11 @@ wc_in_class(const wchar_t c, const RegexPattern* const class) {
 }
 
 
+IndexRange
+regex_next_in_str(const size_t str_len, const wchar_t* str,
+                  const RegexPattern* regex, size_t start);
+
+
 size_t
 regex_match(const size_t str_len, const wchar_t* str,
             const RegexPattern* regex, size_t pos) {
@@ -522,12 +527,30 @@ regex_match(const size_t str_len, const wchar_t* str,
                     
                     if (!wc_in_class(str[pos], regex)) {
                         
-                        break;
+                        return pos - start;
                     }
                 }
 
-                return str_len - 1;
-            } 
+                return str_len - start;
+            }
+
+            IndexRange next_match =
+                regex_next_in_str(str_len, str, regex->next, pos);
+
+            if (!next_match.len) {
+
+                return 0;
+            }
+            
+            for (; pos < next_match.start; pos++) {
+
+                if (!wc_in_class(str[pos], regex)) {
+
+                    return 0;
+                }
+            }
+
+            return next_match.len + next_match.start - start;
         }
     }
 
