@@ -19,26 +19,26 @@
 #define REPLACEMENT_LEN PATTERN_LEN
 #define MAX_RANGES 100
 
-enum RegexType {
+typedef enum RegexType {
     EXACT = 0,
     CLASS = 1,
-};
+} RegexType;
 
-enum LinesError {
+typedef enum LinesError {
     LINES_SUCCESS = 0,
     LINES_TOOLONG = 1,
     LINES_MEMFAIL = 2,
-};
+} LinesError;
 
-enum RegexEscape {
+typedef enum RegexEscape {
     UNESCAPED = 0,
     ESCAPED = 1,
-};
+} RegexEscape;
 
-enum ClassParseStatus {
+typedef enum ClassParseStatus {
     INCLUDE = 0,
     EXCLUDE = 1,
-};
+} ClassParseStatus;
 
 typedef struct list_node list_node;
 struct list_node {
@@ -62,7 +62,7 @@ struct WCharRange {
 typedef struct RegexPattern RegexPattern;
 struct RegexPattern {
     RegexPattern* next;
-    enum RegexType type;
+    RegexType type;
     size_t len; 
     wchar_t exact[BLOB_SIZE + 1];
     WCharRange included[MAX_RANGES];
@@ -207,8 +207,8 @@ int
 regex_class_parse(const wchar_t* const str, const wchar_t** end, 
                   RegexPattern* const regex) {
     
-    enum RegexEscape esc = UNESCAPED;
-    enum ClassParseStatus status = INCLUDE;
+    RegexEscape esc = UNESCAPED;
+    ClassParseStatus status = INCLUDE;
     size_t cur = 0;
     regex->type = CLASS;
 
@@ -335,7 +335,7 @@ regex_class_parse(const wchar_t* const str, const wchar_t** end,
 
 RegexPattern*
 regex_parse(const wchar_t* const str, const wchar_t** end,
-            enum RegexEscape esc) {
+            RegexEscape esc) {
     
     const wchar_t c = str[0];
     if (iswcntrl(c)) {
@@ -882,7 +882,7 @@ split_node(list_node* const node, const wchar_t divider) {
 }
 
 
-enum LinesError
+LinesError
 arrange_into_lines(list_node* blob) {
 
     while (blob) {
@@ -928,12 +928,51 @@ search_text(const list_node* text, const RegexPattern* regex) {
 }
 
 
+LinesError
+search_and_replace(const list_node* text, const RegexPattern* regex,
+                   const wchar_t* const replace) {
+
+    IndexRange matches[BLOB_SIZE + 1] = {0};
+    size_t replace_len = wcslen(replace);
+    for (; text; text = text->next) {
+        
+        size_t content_len = wcslen(text->content);
+        regex_search_str(text->content, regex, matches, BLOB_SIZE);
+        
+        for (size_t i = 0; matches[i].len; i++) {
+
+            content_len += replace_len - matches[i].len;
+        }
+
+        if (content_len > BLOB_SIZE) {
+
+            return LINES_TOOLONG;
+        }
+
+        size_t pos = 0;
+        for (size_t i = 0; pos < BLOB_SIZE && matches[i].len; i++) {
+
+            for (; pos < matches[i].start; pos++) {
+
+                putwc(text->content[pos], stdout);
+            }
+            fwprintf(stdout, L"%ls", replace);
+            pos += matches[i].len;
+        }
+
+        fwprintf(stdout, L"%ls", &(text->content)[pos]);
+    }
+
+    return LINES_SUCCESS;
+}
+
+
 int
 main(int argc, char* argv[]) {
 
     if (argc != 2 && argc != 3) {
         
-        fprintf(stderr, "Missing a search regex!\n");
+        fprintf(stderr, "USAGE: %s SEARCH_REGEX [REPLACEMENT]\n", argv[0]);
         return EXIT_FAILURE;
     }
     
@@ -947,8 +986,8 @@ main(int argc, char* argv[]) {
     }
     
     wchar_t regex_str[BLOB_SIZE + 1] = {0};
-    char regex_raw[4*(BLOB_SIZE + 1)] = {0};
-    strncpy(regex_raw, argv[1], 4*(BLOB_SIZE + 1));
+    char regex_raw[sizeof(regex_str)] = {0};
+    strncpy(regex_raw, argv[1], sizeof(regex_raw) - 1);
     mbstowcs(regex_str, regex_raw, BLOB_SIZE);
     RegexPattern* regex = regex_from_str(regex_str);
     if (!regex) {
@@ -957,6 +996,14 @@ main(int argc, char* argv[]) {
         goto FAIL;
     }
     regex_print(regex);
+
+    wchar_t replacement[BLOB_SIZE + 1] = {0};
+    char replacement_raw[sizeof(replacement)] = {0};
+    if (argc == 3) {
+
+        strncpy(replacement_raw, argv[2], sizeof(replacement_raw) - 1);
+        mbstowcs(replacement, replacement_raw, BLOB_SIZE);
+    }
     
     switch (arrange_into_lines(blobs)) {
       
@@ -972,11 +1019,29 @@ main(int argc, char* argv[]) {
         fprintf(stderr, "Memory allocation failure.\n");
         goto FAIL_REGEX;
     }
-    
     fwprintf(stderr, L"\n");
+
     if (argc == 2) {
 
         search_text(blobs, regex);
+    
+    } else {
+        
+        LinesError rep_err = search_and_replace(blobs, regex, replacement);
+
+        switch (rep_err) {
+
+        case LINES_SUCCESS:
+            break;
+
+        case LINES_TOOLONG:
+            fprintf(stderr, "One of the lines is too long "
+                            "(>%d characters)!\n", BLOB_SIZE);
+            goto FAIL_REGEX;
+
+        default:
+            break;
+        }
     }
     
     regex_free(regex);
