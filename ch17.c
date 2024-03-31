@@ -121,6 +121,29 @@ regex_is_special(const wchar_t c) {
 
 
 void
+print_wchar_ranges(const WCharRange range[static MAX_RANGES], size_t count) {
+
+    for (size_t i = 0; i < count; i++) {
+                
+        if (i) {
+
+            fwprintf(stderr, L",");
+        }
+
+        if (range[i].first == range[i].last) {
+
+            fwprintf(stderr, L"\'%lc\'", range[i].first);
+        
+        } else {
+
+            fwprintf(stderr, L"\'%lc\'-\'%lc\'",
+                     range[i].first, range[i].last);
+        }
+    }
+}
+
+
+void
 regex_print(const RegexPattern* regex) {
 
     while (regex) {
@@ -133,26 +156,18 @@ regex_print(const RegexPattern* regex) {
         } else {
 
             fwprintf(stderr, L"CLASS, Included:");
-            for (size_t i = 0; i < regex->included_len; i++) {
-                
-                if (i) {
-
-                    fwprintf(stderr, L",");
-                }
-                fwprintf(stderr, L"\'%lc\'-\'%lc\'",
-                         regex->included[i].first, regex->included[i].last);
-            }
+            print_wchar_ranges(regex->included, regex->included_len);
             fwprintf(stderr, L"\n             Excluded:");
-            for (size_t i = 0; i < regex->excluded_len; i++) {
-                
-                if (i) {
+            print_wchar_ranges(regex->excluded, regex->excluded_len);
+            fwprintf(stderr, L"\n             Length: ");
+            if (regex->len == SIZE_MAX - 1) {
 
-                    fwprintf(stderr, L",");
-                }
-                fwprintf(stderr, L"\'%lc\'-\'%lc\'",
-                         regex->excluded[i].first, regex->excluded[i].last);
+                fwprintf(stderr, L"stretch\n");
+
+            } else {
+
+                fwprintf(stderr, L"%zu\n", regex->len);
             }
-            fwprintf(stderr, L"\n             Length: %zu\n", regex->len);
         }
 
         regex = regex->next;
