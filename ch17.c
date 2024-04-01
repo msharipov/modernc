@@ -1,8 +1,8 @@
 /* 
 *   TODO:
 *   - extend text processor to use wide characters = DONE
-*   - add regex search/replace
-*   - add regex grouping
+*   - add regex search/replace = DONE
+*   - add regex grouping = DONE
 */
 
 #include <wchar.h>
@@ -995,7 +995,6 @@ main(int argc, char* argv[]) {
         fprintf(stderr, "Could not parse the search regex!\n");
         goto FAIL;
     }
-    regex_print(regex);
 
     wchar_t replacement[BLOB_SIZE + 1] = {0};
     char replacement_raw[sizeof(replacement)] = {0};
