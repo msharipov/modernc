@@ -5,22 +5,25 @@ TARGET_EXE := $(TARGET_SRC:%.c=%)
 
 .PHONY: all
 
-all: $(TARGET_EXE)
+all: $(TARGET_EXE) | $(BIN_DIR)
 
-ch2 : ch2.c
+$(BIN_DIR):
+	mkdir -p $@
+
+ch2 : ch2.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
-ch3 : ch3.c
+ch3 : ch3.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
-ch5 : ch5.c
+ch5 : ch5.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
-ch6 : ch6.c
+ch6 : ch6.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
-ch13 : ch13.c
+ch13 : ch13.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
-% : %.c
+% : %.c | $(BIN_DIR)
 	gcc $< $(CFLAGS) -o $(BIN_DIR)/$@
