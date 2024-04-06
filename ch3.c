@@ -8,7 +8,7 @@
 #include <math.h>
 #include <stdbool.h>
 
-static const long BBP_SUMMATION_LIMIT = 6;
+#define BBP_SUMMATION_LIMIT = 6;
 
 
 typedef struct {
