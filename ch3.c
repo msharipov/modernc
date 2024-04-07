@@ -8,35 +8,32 @@
 #include <math.h>
 #include <stdbool.h>
 
-#define BBP_SUMMATION_LIMIT = 6;
+#define BBP_SUMMATION_LIMIT 6ll
 
+typedef struct Powers Powers;
+struct Powers {
+    int64_t s1;
+    int64_t s2;
+    int64_t s3;
+    int64_t s4;
 
-typedef struct {
-    
-    long s1;
-    long s2;
-    long s3;
-    long s4;
+};
 
-} Powers;
-
-
-typedef struct {
-
+typedef struct Sums Sums;
+struct Sums {
     long double s1;
     long double s2;
     long double s3;
     long double s4;
+};
 
-} Sums;
 
+int64_t
+mod_power(int64_t base, int64_t exp, int64_t mod) {
 
-long
-mod_power(long base, long exp, long mod) {
+    int64_t result = 1;
 
-    long result = 1;
-
-    for (long k = 0; k < exp; k++) {
+    for (int64_t k = 0; k < exp; k++) {
 
         result *= base;
         result %= mod;
@@ -47,17 +44,17 @@ mod_power(long base, long exp, long mod) {
 
 
 long double
-bbp_sum(long n, long plus_k) {
+bbp_sum(int64_t n, int64_t plus_k) {
 
     long double result = 0.0;
 
-    for (long k = 0; k <= n; k++) {
+    for (int64_t k = 0; k <= n; k++) {
 
         result += (long double)(mod_power(16, n - k, 8*k + plus_k))
                   / (8*k + plus_k);
     }
 
-    for (long k = n + 1; k < n + BBP_SUMMATION_LIMIT; k++) {
+    for (int64_t k = n + 1; k < n + BBP_SUMMATION_LIMIT; k++) {
         
         result += powl(16, n - k) / (8*k + plus_k);
     }
@@ -67,11 +64,11 @@ bbp_sum(long n, long plus_k) {
 
 
 long double
-bbp_long_sum(long n, long plus_k) {
+bbp_long_sum(int64_t n, int64_t plus_k) {
 
     long double result = 0.0;
 
-    for (long k = 0; k <= n; k++) {
+    for (int64_t k = 0; k <= n; k++) {
 
         result += (long double)(mod_power(16, n - k, 8*k + plus_k))
                    / (8*k + plus_k);
@@ -82,11 +79,11 @@ bbp_long_sum(long n, long plus_k) {
 
 
 long double
-bbp_short_sum(long n, long plus_k) {
+bbp_short_sum(int64_t n, int64_t plus_k) {
 
     long double result = 0.0;
     
-    for (long k = n + 1; k < n + BBP_SUMMATION_LIMIT; k++) {
+    for (int64_t k = n + 1; k < n + BBP_SUMMATION_LIMIT; k++) {
         
         result += powl(16, n - k) / (8*k + plus_k);
     }
@@ -96,7 +93,7 @@ bbp_short_sum(long n, long plus_k) {
 
 
 int8_t
-hex_digit(const long n) {
+hex_digit(const int64_t n) {
     
     long double frac_parts = 0.0;
     long double int_part;
@@ -108,6 +105,7 @@ hex_digit(const long n) {
 
     frac_parts = modfl(frac_parts, &int_part);
     if (frac_parts < 0.0) {
+
         frac_parts = 1 + frac_parts;
     }
 
@@ -116,10 +114,9 @@ hex_digit(const long n) {
 
 
 void
-generate_power_series(Powers arr[], const size_t n) {
-    
+generate_power_series(const size_t n, Powers arr[static (n + 1)]) {
 
-    for (long k = n; k >= 0; k--) {
+    for (int64_t k = n; k >= 0; k--) {
 
         Powers current = {mod_power(16, n - k, 8*k + 1),
                           mod_power(16, n - k, 8*k + 4),
@@ -132,9 +129,9 @@ generate_power_series(Powers arr[], const size_t n) {
 
 
 void
-update_power_series(Powers arr[], const size_t n) {
+update_power_series(const size_t n, Powers arr[static (n + 1)]) {
     
-    for (long k = 0; k <= n; k++) {
+    for (int64_t k = 0; k <= n; k++) {
     
         arr[k].s1 = (16*arr[k].s1) % (8*k + 1); 
         arr[k].s2 = (16*arr[k].s2) % (8*k + 4);
@@ -145,7 +142,8 @@ update_power_series(Powers arr[], const size_t n) {
 
 
 void
-hex_sequence_imprecise(const long start, const long stop, int8_t digits[]) {
+hex_sequence_imprecise(const int64_t start, const int64_t stop,
+                       int8_t digits[static (stop - start + 1)]) {
     
     long double int_part;
     long double sum1 = bbp_long_sum(start - 1, 1);
@@ -153,7 +151,7 @@ hex_sequence_imprecise(const long start, const long stop, int8_t digits[]) {
     long double sum3 = bbp_long_sum(start - 1, 5);
     long double sum4 = bbp_long_sum(start - 1, 6);
 
-    for (long n = start; n <= stop; n++) {
+    for (int64_t n = start; n <= stop; n++) {
         
         long double frac_parts = 0.0;
         
@@ -169,6 +167,7 @@ hex_sequence_imprecise(const long start, const long stop, int8_t digits[]) {
 
         frac_parts = modfl(frac_parts, &int_part);
         if (frac_parts < 0.0) {
+
             frac_parts = 1 + frac_parts;
         }
 
@@ -178,10 +177,11 @@ hex_sequence_imprecise(const long start, const long stop, int8_t digits[]) {
 
 
 void
-hex_sequence(const long start, const long stop, int8_t digits[]) {
+hex_sequence(const int64_t start, const int64_t stop,
+             int8_t digits[static (stop + 1)]) {
     
     long double int_part;
-    Powers* powers = malloc(sizeof(Powers)*(stop + 1));
+    Powers* powers = malloc(sizeof(Powers[stop + 1]));
 
     if (!powers) {
         
@@ -195,9 +195,9 @@ hex_sequence(const long start, const long stop, int8_t digits[]) {
         powers[i] = ones;
     }
 
-    generate_power_series(powers, start);
+    generate_power_series(start, powers);
 
-    for (long n = start; n <= stop; n++) {
+    for (int64_t n = start; n <= stop; n++) {
         
         long double frac_parts = 0.0;
         Sums sums = {0.0, 0.0, 0.0, 0.0};
@@ -210,7 +210,7 @@ hex_sequence(const long start, const long stop, int8_t digits[]) {
             sums.s4 += (long double)(powers[k].s4)/(8*k + 6);
         }
 
-        update_power_series(powers, n);
+        update_power_series(n, powers);
 
         frac_parts += 4 * modfl(sums.s1 + bbp_short_sum(n, 1), &int_part);
         frac_parts -= 2 * modfl(sums.s2 + bbp_short_sum(n, 4), &int_part);
@@ -219,6 +219,7 @@ hex_sequence(const long start, const long stop, int8_t digits[]) {
 
         frac_parts = modfl(frac_parts, &int_part);
         if (frac_parts < 0.0) {
+
             frac_parts = 1 + frac_parts;
         }
 
@@ -230,11 +231,11 @@ hex_sequence(const long start, const long stop, int8_t digits[]) {
 
 
 int
-main(int argc, char * argv[]) {
+main(int argc, char * argv[static argc]) {
 
     int32_t start = 0;
     int32_t stop = 0;
-    char N_str[21];
+    char N_str[21] = {0};
     char ** end = NULL;
     
     switch (argc) {
@@ -263,7 +264,7 @@ main(int argc, char * argv[]) {
         return EXIT_FAILURE;
     }
     
-    int8_t * pi_digits = malloc((stop - start + 1)*sizeof(int8_t));
+    int8_t * pi_digits = malloc(sizeof(int8_t[stop - start + 1]));
     if (!pi_digits) {
         printf("Memory error.");
         return EXIT_FAILURE;
@@ -284,6 +285,7 @@ main(int argc, char * argv[]) {
     size_t col_counter = 0;
     size_t col_offset = 0;
     if (!start) {
+
         printf("pi = 3.");
         col_counter = 6;
         col_offset = 6;
@@ -297,10 +299,14 @@ main(int argc, char * argv[]) {
         if (col_counter == 65 + col_offset) {
             
             if (!start) {
+
                 printf("\n       ");
+
             } else {
+
                 printf("\n");
             }
+
             col_counter = col_offset;
 
         } else if (col_counter >= (10 + col_offset) 
