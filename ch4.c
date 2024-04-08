@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <stdint.h>
 
+// Returns the root of the tree given a node
 size_t
 Find(const size_t parent[], size_t element) {
 
     while (parent[element] != SIZE_MAX) {
+
         element = parent[element];
     }
 
@@ -44,7 +46,7 @@ FindCompress(size_t parent[], size_t element) {
 
 
 size_t
-Union(size_t parent[], size_t A, size_t B) {
+Union(size_t parent[], const size_t A, const size_t B) {
     
     size_t new_root = FindCompress(parent, A); 
     FindReplace(parent, B, new_root);
