@@ -8,25 +8,23 @@
 
 typedef double complex lfc_t;
 
-enum Num_Deriv_Error{
-    
+typedef enum{
     SUCCESS = 0,
     UNDEFINED = 1,
     UNSTABLE = 2,
-};
+} Num_Deriv_Error;
 
-
+typedef struct Cmpl_Deriv_Result Cmpl_Deriv_Result;
 struct Cmpl_Deriv_Result{
-
     lfc_t value;
-    enum Num_Deriv_Error error;
+    Num_Deriv_Error error;
 };
 
 
 // Given z = x + iy and f(z) = u(x,y) + iv(x,y), computes f'(z) as:
 // du/dx + i*dv/dx with both derivatives evaluated at z_0
-struct Cmpl_Deriv_Result 
-cmpl_deriv(lfc_t(*f)(const lfc_t), const lfc_t z, const double dz) {
+Cmpl_Deriv_Result 
+cmpl_deriv(lfc_t (*f)(const lfc_t), const lfc_t z, const double dz) {
     
     const double h = fabs(dz/2);
 
@@ -48,15 +46,13 @@ cmpl_deriv(lfc_t(*f)(const lfc_t), const lfc_t z, const double dz) {
     const double v4 = cimag(f4);
     const double v5 = cimag(f5);
 
-    struct Cmpl_Deriv_Result result = {0, SUCCESS};
+    Cmpl_Deriv_Result result = {0, SUCCESS};
     
     const double dudx = (u1 - 8*u2 + 8*u4 - u5) / (12*h);
     const double dvdx = (v1 - 8*v2 + 8*v4 - v5) / (12*h);
 
-    if (fpclassify(dudx) == FP_NAN || fpclassify(dudx) == FP_INFINITE ||
-        fpclassify(dvdx) == FP_NAN || fpclassify(dvdx) == FP_INFINITE ||
-        fpclassify(u3) == FP_NAN || fpclassify(u3) == FP_INFINITE ||
-        fpclassify(v3) == FP_NAN || fpclassify(v3) == FP_INFINITE) {
+    if (isnan(dudx) || isinf(dudx) || isnan(dvdx) || isinf(dvdx) ||
+        isnan(u3) || isinf(u3) || isnan(v3) || isinf(v3) ) {
 
         result.error = UNDEFINED;
         return result;
@@ -152,20 +148,24 @@ func4(const lfc_t z) {
 int
 main() {
     
-    struct Cmpl_Deriv_Result res;
+    Cmpl_Deriv_Result res = {0};
 
     res = cmpl_deriv(func1, 1 + I*3, 1e-6);
     printf("Test #1: ");
     switch (res.error) {
+
         case UNDEFINED:
             printf("Derivative is not defined!\n");
             break;
+
         case UNSTABLE:
             printf("Derivative is unstable!\n");
             break;
+
         case SUCCESS:
             printf("%f + %fi\n", creal(res.value), cimag(res.value));
             break;
+
         default:
             printf("Unknown error!\n");
     }
@@ -173,15 +173,19 @@ main() {
     res = cmpl_deriv(csin, I, 1e-6);
     printf("Test #2: ");
     switch (res.error) {
+
         case UNDEFINED:
             printf("Derivative is not defined!\n");
             break;
+
         case UNSTABLE:
             printf("Derivative is unstable!\n");
             break;
+
         case SUCCESS:
             printf("%f + %fi\n", creal(res.value), cimag(res.value));
             break;
+
         default:
             printf("Unknown error!\n");
     }
@@ -189,15 +193,19 @@ main() {
     res = cmpl_deriv(func2, -1 + 2*I, 1e-6);
     printf("Test #3: ");
     switch (res.error) {
+
         case UNDEFINED:
             printf("Derivative is not defined!\n");
             break;
+
         case UNSTABLE:
             printf("Derivative is unstable!\n");
             break;
+
         case SUCCESS:
             printf("%f + %fi\n", creal(res.value), cimag(res.value));
             break;
+
         default:
             printf("Unknown error!\n");
     }
@@ -205,15 +213,19 @@ main() {
     res = cmpl_deriv(func4, 0, 1e-6);
     printf("Test #4: ");
     switch (res.error) {
+
         case UNDEFINED:
             printf("Derivative is not defined!\n");
             break;
+
         case UNSTABLE:
             printf("Derivative is unstable!\n");
             break;
+
         case SUCCESS:
             printf("%f + %fi\n", creal(res.value), cimag(res.value));
             break;
+
         default:
             printf("Unknown error!\n");
     }
@@ -221,15 +233,19 @@ main() {
     res = cmpl_deriv(func4, 7e-7, 1e-6);
     printf("Test #5: ");
     switch (res.error) {
+
         case UNDEFINED:
             printf("Derivative is not defined!\n");
             break;
+
         case UNSTABLE:
             printf("Derivative is unstable!\n");
             break;
+
         case SUCCESS:
             printf("%f + %fi\n", creal(res.value), cimag(res.value));
             break;
+
         default:
             printf("Unknown error!\n");
     }
