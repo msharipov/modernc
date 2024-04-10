@@ -10,9 +10,10 @@
 #include <math.h>
 
 void
-print_vec(const double vec[], const size_t N) {
+print_vec(const size_t N, const double vec[static N]) {
 
     if (!N) {
+
         return;
     }
 
@@ -26,13 +27,14 @@ print_vec(const double vec[], const size_t N) {
 
 
 double
-dot(const double vec1[], const double vec2[], const size_t N) {
+dot(const size_t N, const double vec1[static N],
+    const double vec2[static N]) {
     
     double result = 0;
 
     for (size_t i = 0; i < N; i++) {
         
-        result += vec1[i] * vec2[i];
+        result += vec1[i]*vec2[i];
     }
 
     return result;
@@ -41,18 +43,18 @@ dot(const double vec1[], const double vec2[], const size_t N) {
 
 // Multiplies an N by M matrix by a vector of length M.
 void
-matvec_mult(const size_t N, const size_t M, const double mat[][M],
-            const double vec2[], double result[]) {
+matvec_mult(const size_t N, const size_t M, const double mat[static N][M],
+            const double vec2[static M], double result[static N]) {
 
     for (size_t n = 0; n < N; n++) {
         
-        result[n] = dot(mat[n], vec2, M);
+        result[n] = dot(M, mat[n], vec2);
     }
 }
 
 
 void
-mult_vec(const size_t N, double vec[], const double mult) {
+mult_vec(const size_t N, double vec[static N], const double mult) {
     
     for (size_t i = 0; i < N; i++) {
 
@@ -62,8 +64,8 @@ mult_vec(const size_t N, double vec[], const double mult) {
 
 
 void
-addmult_vec(const size_t N, double dest[], const double from[],
-            const double mult) {
+addmult_vec(const size_t N, double dest[static N],
+            const double from[static N], const double mult) {
 
     if (dest == from) {
 
@@ -73,7 +75,7 @@ addmult_vec(const size_t N, double dest[], const double from[],
 
     for (size_t i = 0; i < N; i++) {
 
-        dest[i] += mult * from[i];
+        dest[i] += mult*from[i];
     }
 }
 
@@ -81,13 +83,15 @@ addmult_vec(const size_t N, double dest[], const double from[],
 // Computes the inverse of an N by N matrix, using Gaussian elimination
 // Returns 0 if OK, 1 if operation fails
 int
-mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
-
-    double* const mat = malloc(N * N * sizeof(double));
+mat_inv(const size_t N, const double init_mat[static N*N],
+        double inv[static N][N]) {
+    
+    const size_t mat_size = sizeof(double[N*N]);
+    double* const mat = malloc(mat_size);
 
     if (mat) {
 
-        memcpy(mat, init_mat, N * N * sizeof(double));
+        memcpy(mat, init_mat, mat_size);
 
     } else {
 
@@ -96,6 +100,7 @@ mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
 
     // Initialize inv to be an identity matrix:
     for (size_t r = 0; r < N; r++) {
+
         for (size_t c = 0; c < N; c++) {
             
             inv[r][c] = (r == c);
@@ -105,7 +110,7 @@ mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
     for (size_t c = 0; c < N; c++) {
         
         // Normalize the initial row
-        const double row_lead_inv = 1.0/mat[c * N + c];
+        const double row_lead_inv = 1.0/mat[c*N + c];
 
         if (fpclassify(row_lead_inv) == FP_INFINITE) {
 
@@ -113,7 +118,7 @@ mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
             return 1;
         }
     
-        mult_vec(N, mat + c * N, row_lead_inv);
+        mult_vec(N, mat + c*N, row_lead_inv);
         mult_vec(N, inv[c], row_lead_inv);
 
         for (size_t r = 0; r < N; r++) {
@@ -123,9 +128,9 @@ mat_inv(const size_t N, const double * init_mat, double inv[][N]) {
             }
             
             // Cancel out element c in other rows
-            const double mult_inv = -mat[r * N + c];
+            const double mult_inv = -mat[r*N + c];
 
-            addmult_vec(N, mat + r * N, mat + c * N, mult_inv);
+            addmult_vec(N, mat + r*N, mat + c*N, mult_inv);
             addmult_vec(N, inv[r], inv[c], mult_inv);
         }
     }
@@ -176,61 +181,61 @@ main() {
     mat_inv(3, (const double *)M2_inv, M2_inv_inv);
 
     printf("A = [");
-    print_vec(A, LEN);
+    print_vec(LEN, A);
     printf("]\n");
 
     printf("B = [");
-    print_vec(B, LEN);
+    print_vec(LEN, B);
     printf("]\n");
 
     printf("M = [\n");
     for (size_t r = 0; r < MAT_R; r++) {
-        print_vec(M[r], MAT_C);
+        print_vec(MAT_C, M[r]);
         printf("\n");
     }
     printf("]\n\n");
 
-    printf("A * B = %f\n", dot(A, B, LEN));
+    printf("A * B = %f\n", dot(LEN, A, B));
     
     printf("MA = [");
-    print_vec(MA, MAT_R);
+    print_vec(MAT_R, MA);
     printf("]\n");
     
     printf("MB = [");
-    print_vec(MB, MAT_R);
+    print_vec(MAT_R, MB);
     printf("]\n\n");
 
     printf("I = [\n");
     for (size_t r = 0; r < LEN; r++) {
-        print_vec(IM[r], LEN);
+        print_vec(LEN, IM[r]);
         printf("\n");
     }
     printf("]\n\n");
     
     printf("inv(I) = [\n");
     for (size_t r = 0; r < LEN; r++) {
-        print_vec(IM_inv[r], LEN);
+        print_vec(LEN, IM_inv[r]);
         printf("\n");
     }
     printf("]\n\n");
 
     printf("M2 = [\n");
     for (size_t r = 0; r < 3; r++) {
-        print_vec(M2[r], 3);
+        print_vec(3, M2[r]);
         printf("\n");
     }
     printf("]\n\n");
 
     printf("inv(M2) = [\n");
     for (size_t r = 0; r < 3; r++) {
-        print_vec(M2_inv[r], 3);
+        print_vec(3, M2_inv[r]);
         printf("\n");
     }
     printf("]\n\n");
 
     printf("inv(inv(M2)) = [\n");
     for (size_t r = 0; r < 3; r++) {
-        print_vec(M2_inv_inv[r], 3);
+        print_vec(3, M2_inv_inv[r]);
         printf("\n");
     }
     printf("]\n\n");
