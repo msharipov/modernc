@@ -8,14 +8,15 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+typedef struct Node Node;
 struct Node {
     size_t parent;
     size_t value;
 };
 
 bool
-search(const size_t x, const size_t start, const bool* adjmat,
-       const size_t N) {
+search(const size_t x, const size_t start, const size_t N,
+       const bool adjmat[static N*N]) {
 
     if (x == start) {
 
@@ -30,7 +31,7 @@ search(const size_t x, const size_t start, const bool* adjmat,
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = malloc(N * sizeof(size_t));
+    size_t* frontier = calloc(N, sizeof(size_t));
     if (!frontier) {
     
         free(visited);
@@ -73,8 +74,8 @@ search(const size_t x, const size_t start, const bool* adjmat,
 
 
 size_t
-connected(size_t con[], const size_t start, const bool* adjmat,
-          const size_t N) {
+connected(const size_t start, const size_t N, size_t con[static N*N],
+          const bool adjmat[static N*N]) {
     
     size_t count = 0;
     
@@ -84,7 +85,7 @@ connected(size_t con[], const size_t start, const bool* adjmat,
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = malloc(N * sizeof(size_t));
+    size_t* frontier = calloc(N, sizeof(size_t));
     if (!frontier) {
     
         free(visited);
@@ -97,7 +98,7 @@ connected(size_t con[], const size_t start, const bool* adjmat,
     size_t q_start = 0;
     size_t q_end = 1;
 
-    while (q_start < q_end) {
+    for (; q_start < q_end; q_start++) {
 
         const size_t current_node = frontier[q_start];
 
@@ -110,11 +111,8 @@ connected(size_t con[], const size_t start, const bool* adjmat,
                 con[count] = i;
                 count++;
                 visited[i] = true;
-                
             }
         }
-
-        q_start++;
     }
 
     free(visited);
@@ -124,8 +122,8 @@ connected(size_t con[], const size_t start, const bool* adjmat,
 
 
 size_t
-spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
-              const size_t N) {
+spanning_tree(const size_t start, const size_t N, Node tree[static N*N],
+              const bool adjmat[static N*N]) {
     
     bool* visited = calloc(N, sizeof(bool));
     if (!visited) {
@@ -133,7 +131,7 @@ spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
         exit(EXIT_FAILURE);
     }
 
-    size_t* frontier = malloc(N * sizeof(size_t));
+    size_t* frontier = calloc(N, sizeof(size_t));
     if (!frontier) {
     
         free(visited);
@@ -142,13 +140,13 @@ spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
     
     visited[start] = true;
     frontier[0] = start;
-    tree[0] = (struct Node) {start, start};
+    tree[0] = (Node) {start, start};
 
     size_t q_start = 0;
     size_t q_end = 1;
     size_t tree_size = 1;
 
-    while (q_start < q_end) {
+    for (; q_start < q_end; q_start++) {
 
         const size_t current_node = frontier[q_start];
 
@@ -158,14 +156,11 @@ spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
 
                 frontier[q_end] = i;
                 q_end++;
-                tree[tree_size] = (struct Node) {current_node, i};
+                tree[tree_size] = (Node) {current_node, i};
                 tree_size++;
                 visited[i] = true;
-                
             }
         }
-
-        q_start++;
     }
 
     free(visited);
@@ -176,7 +171,7 @@ spanning_tree(struct Node* tree, const size_t start, const bool* adjmat,
 
 void
 print_subtree(const size_t start, const size_t depth,
-              const struct Node* tree, const size_t N) {
+              const size_t N, const Node tree[static N]) {
     
     bool has_children = false;
 
@@ -197,7 +192,7 @@ print_subtree(const size_t start, const size_t depth,
                 printf(":\n");
             }
 
-            print_subtree(i, depth + 1, tree, N);
+            print_subtree(i, depth + 1, N, tree);
         }
     }
 
@@ -209,7 +204,7 @@ print_subtree(const size_t start, const size_t depth,
 
 
 void
-print_tree(const struct Node* tree, const size_t N) {
+print_tree(const size_t N, const Node tree[static N]) {
 
     size_t root_index = 0;
     bool root_found = false;
@@ -229,7 +224,7 @@ print_tree(const struct Node* tree, const size_t N) {
         exit(EXIT_FAILURE);
     }
     
-    print_subtree(root_index, 0, tree, N);
+    print_subtree(root_index, 0, N, tree);
 }
 
 
@@ -246,14 +241,14 @@ main() {
     };
 
     size_t G1con[6] = {0};
-    size_t G1count = connected(G1con, 2, G1, 6);
-    struct Node G1tree[6] = {0};
-    size_t G1tree_size = spanning_tree(G1tree, 2, G1, 6);
+    size_t G1count = connected(2, 6, G1con, G1);
+    Node G1tree[6] = {0};
+    size_t G1tree_size = spanning_tree(2, 6, G1tree, G1);
 
-    printf("3 connected to 0: %s\n", (search(0, 3, G1, 6)) ? "true" : "false");
-    printf("2 connected to 5: %s\n", (search(5, 2, G1, 6)) ? "true" : "false");
-    printf("5 connected to 4: %s\n", (search(4, 5, G1, 6)) ? "true" : "false");
-    printf("1 connected to 1: %s\n", (search(1, 1, G1, 6)) ? "true" : "false");
+    printf("3 connected to 0: %s\n", (search(0, 3, 6, G1)) ? "true" : "false");
+    printf("2 connected to 5: %s\n", (search(5, 2, 6, G1)) ? "true" : "false");
+    printf("5 connected to 4: %s\n", (search(4, 5, 6, G1)) ? "true" : "false");
+    printf("1 connected to 1: %s\n", (search(1, 1, 6, G1)) ? "true" : "false");
 
     printf("Connected to 2:\n");
     for (size_t i = 0; i < G1count; i++) {
@@ -266,7 +261,7 @@ main() {
         printf("%zu -> %zu\n", G1tree[i].value, G1tree[i].parent);
     }
     printf("\n");
-    print_tree(G1tree, G1tree_size);
+    print_tree(G1tree_size, G1tree);
 
     exit(EXIT_SUCCESS);
 }
