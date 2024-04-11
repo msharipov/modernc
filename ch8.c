@@ -8,39 +8,38 @@
 
 #define DISCONNECT (UINT32_MAX / 2)
 
-typedef uint32_t prio_t;
+typedef uint32_t priority;
 
 typedef union {
-
     void* ptr;
     uint64_t u64;
-
+    uint8_t u8[8];
 } eight_bytes;
 
-
-typedef struct {
-
-    prio_t prio;
+typedef struct PQEntry PQEntry;
+struct PQEntry{
+    priority prio;
     eight_bytes data;
+};
 
-} PQEntry;
-
-
-typedef struct {
-
+typedef struct PrioQueue PrioQueue;
+struct PrioQueue {
     PQEntry* entries;
     size_t count;
     size_t MAX_SIZE;
-
-} PrioQueue;
+};
 
 
 PrioQueue
-pq_create(size_t max_size) {
+pq_create(const size_t max_size) {
 
-    PQEntry* data_ptr = malloc(max_size * sizeof(PQEntry));
+    PQEntry* data_ptr = calloc(max_size, sizeof(PQEntry));
 
-    return (PrioQueue) {.entries = data_ptr, .count = 0, .MAX_SIZE = max_size};
+    return (PrioQueue) {
+        .entries = data_ptr,
+        .count = 0,
+        .MAX_SIZE = max_size
+    };
 }
 
 
@@ -52,14 +51,16 @@ pq_free(PrioQueue pq) {
 
 
 void
-pq_print(const PrioQueue* const pq) {
+pq_print(const PrioQueue pq[static 1]) {
 
     if (!pq->count) {
+
         return;
     }
     
     const size_t stop = pq->count - 1;
     for (size_t i = 0; i < stop; i++) {
+
         printf("%i ", pq->entries[i].prio);
     }
     
@@ -68,7 +69,8 @@ pq_print(const PrioQueue* const pq) {
 
 
 size_t
-pq_insert(const eight_bytes d, const prio_t p, PrioQueue* const pq) {
+pq_insert(const eight_bytes d, const priority p,
+          PrioQueue pq[static 1]) {
 
     if (pq->count == pq->MAX_SIZE) {
 
@@ -94,7 +96,7 @@ pq_insert(const eight_bytes d, const prio_t p, PrioQueue* const pq) {
 
 
 PQEntry
-pq_pop(PrioQueue* const pq) {
+pq_pop(PrioQueue pq[static 1]) {
     
     if (!pq->count) {
 
@@ -156,21 +158,22 @@ pq_pop(PrioQueue* const pq) {
 }
 
 
-prio_t
-dijkstra_path (size_t* path, const size_t x, const size_t y, 
-               const prio_t* D, const size_t N) {
+priority
+dijkstra_path(const size_t N, size_t path[static N],
+              const size_t x, const size_t y,
+              const priority D[static N*N]) {
     
-    const prio_t NOEDGE = DISCONNECT;
+    const priority NOEDGE = DISCONNECT;
     
     // Keeps track of distances from x to other nodes.
-    prio_t* distances = malloc(N * sizeof(prio_t));
+    priority* distances = calloc(N, sizeof(priority));
     if (!distances) {
 
         exit(EXIT_FAILURE);
     }
 
     // Keeps track of the direction of the shortest path from x.
-    size_t* prev = malloc(N * sizeof(size_t));
+    size_t* prev = calloc(N, sizeof(size_t));
     if (!prev) {
 
         free(distances);
@@ -194,7 +197,6 @@ dijkstra_path (size_t* path, const size_t x, const size_t y,
     pq_insert((eight_bytes){.u64 = x}, 0, &pq);
     distances[x] = 0;
     
-    
     while (pq.count) {
         
         PQEntry top = pq_pop(&pq);
@@ -202,14 +204,14 @@ dijkstra_path (size_t* path, const size_t x, const size_t y,
 
         for (size_t i = 0; i < N; i++) {
             
-            prio_t dist = D[cur_node * N + i];
+            priority dist = D[cur_node * N + i];
 
             if (dist > distances[i] || cur_node == i) {
 
                 continue;
             }
 
-            prio_t new_dist = dist + distances[cur_node];
+            priority new_dist = dist + distances[cur_node];
         
             if (new_dist < distances[i]) {
 
@@ -220,7 +222,7 @@ dijkstra_path (size_t* path, const size_t x, const size_t y,
         }
     }
     
-    prio_t shortest_path = distances[y];
+    priority shortest_path = distances[y];
     
     if (shortest_path != NOEDGE) {
 
@@ -252,7 +254,7 @@ main() {
 
     #define LEN 11
 
-    const prio_t N = DISCONNECT;
+    const priority N = DISCONNECT;
 
     /*
     *     1
@@ -266,7 +268,7 @@ main() {
     *       \ /
     *       10
     */   
-    const prio_t D[LEN * LEN] = {
+    const priority D[LEN*LEN] = {
          0,  3,  4, 12,  3,  N,  N,  N,  N,  N,  N,
          3,  0,  N,  4,  N,  N,  N,  N,  N,  N,  N,
          4,  N,  0,  8,  2,  N,  5,  N,  N,  N,  N,
@@ -284,7 +286,7 @@ main() {
     const size_t start = 4;
     const size_t end = 9;
     
-    printf("Distance: %u\n", dijkstra_path(path, start, end, D, LEN));
+    printf("Distance: %u\n", dijkstra_path(LEN, path, start, end, D));
     printf("Path: ");
     for (size_t i = 0; path[i] != end && i < LEN; i++) {
         
