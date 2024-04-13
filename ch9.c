@@ -26,7 +26,7 @@ lowest_prime_factor(const size_t n) {
 
 
 int
-main(int argc, char* argv[]) {
+main(int argc, char* argv[static argc]) {
 
     if (argc < 2) {
 
@@ -39,8 +39,7 @@ main(int argc, char* argv[]) {
     for (size_t number = 1; number < argc; number++) {
 
         strncpy(N_str, argv[number], MAX_INT_LENGTH);
-        char * end = NULL;
-        size_t N = strtoull(N_str, &end, 10);
+        size_t N = strtoull(N_str, 0, 10);
         
         if (N < 2) {
 
