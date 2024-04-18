@@ -44,7 +44,7 @@ search(const size_t x, const size_t start, const size_t N,
     size_t q_start = 0;
     size_t q_end = 1;
 
-    while (q_start < q_end) {
+    while (q_start < q_end && !found) {
 
         const size_t current_node = frontier[q_start];
 
