@@ -13,7 +13,7 @@
 
 
 void
-print_array(const double * const arr, const size_t n) {
+print_array(const size_t n, const double arr[static n]) {
 
     for (size_t i = 0; i < n; i++) {
 
@@ -22,19 +22,8 @@ print_array(const double * const arr, const size_t n) {
 }
 
 
-void
-fill_rand(double * const arr, const size_t n, const unsigned seed) {
-
-    srand(seed);
-    for (size_t i = 0; i < n; i++) {
-
-        arr[i] = (double)(rand()) / RAND_MAX;
-    }
-}
-
-
 bool
-is_sorted(const double * arr, const size_t n) {
+is_sorted(const size_t n, const double arr[static n]) {
 
     for (size_t i = 0; i < n - 1; i++) {
 
@@ -58,7 +47,7 @@ swap(double* const arr, const size_t a, const size_t b) {
 
 
 void
-quick_sort(double * const arr, const size_t len) {
+quick_sort(const size_t len, double arr[static len]) {
     
     if (len < 3) {
 
@@ -93,8 +82,8 @@ quick_sort(double * const arr, const size_t len) {
         } else {
 
             swap(arr, 0, j);
-            quick_sort(arr, j);
-            quick_sort(&arr[i], len - i);
+            quick_sort(j, arr);
+            quick_sort(len - i, &arr[i]);
             return;
         }
     }
@@ -102,7 +91,7 @@ quick_sort(double * const arr, const size_t len) {
 
 
 void
-merge_sort(double* const arr, const size_t len) {
+merge_sort(const size_t len, double arr[static len]) {
 
     if (len < 3) {
 
@@ -115,8 +104,8 @@ merge_sort(double* const arr, const size_t len) {
     }
 
     size_t middle = len / 2 ;
-    merge_sort(arr, middle);
-    merge_sort(&arr[middle], len - middle);
+    merge_sort(middle, arr);
+    merge_sort(len - middle, &arr[middle]);
 
     double * temp = calloc(len, sizeof(double));
 
@@ -174,7 +163,7 @@ time_sort(double* list, const size_t list_len) {
     intmax_t nsec;
 
     timespec_get(&start, TIME_UTC);
-    quick_sort(list, list_len);
+    quick_sort(list_len, list);
     timespec_get(&finish, TIME_UTC);
     sec = (intmax_t)finish.tv_sec - (intmax_t)start.tv_sec;
     nsec = finish.tv_nsec - start.tv_nsec;
@@ -186,7 +175,7 @@ time_sort(double* list, const size_t list_len) {
     printf("Quick sort: %jd.%09ld s\n", sec, nsec);
     
     timespec_get(&start, TIME_UTC);
-    merge_sort(&list[list_len], list_len);
+    merge_sort(list_len, &list[list_len]);
     timespec_get(&finish, TIME_UTC);
     sec = (intmax_t)finish.tv_sec - (intmax_t)start.tv_sec;
     nsec = finish.tv_nsec - start.tv_nsec;
@@ -203,8 +192,8 @@ int
 main() {
     
     const size_t SHORT_LIST_LEN = 1000;
-    const size_t MIDDLE_LIST_LEN = 100000;
-    const size_t LONG_LIST_LEN = 1000000;
+    const size_t MIDDLE_LIST_LEN = 20000;
+    const size_t LONG_LIST_LEN = 400000;
 
     printf("Allocating memory for test data...\n");
 
@@ -239,7 +228,7 @@ main() {
     }
 
     srand((intmax_t)rand_seed % RAND_MAX);
-
+    
     for (size_t i = 0; i < SHORT_LIST_LEN; i++) {
 
         short_list[i] = (double)rand() / RAND_MAX;
