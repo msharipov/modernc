@@ -6,6 +6,27 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <time.h>
+
+
+void
+fill_rand(const size_t n, double arr[static n], const int* const seed) {
+
+    if (!seed) {
+
+        srand(time(NULL));
+
+    } else {
+        
+        srand(*seed);
+    }
+    
+    for (size_t i = 0; i < n; i++) {
+
+        arr[i] = (1.0*rand())/RAND_MAX;
+    }
+}
+
 
 int
 gen_mergesort(const size_t len, const size_t size, void* arr,
