@@ -158,7 +158,7 @@ main(int argc, char* argv[static argc]) {
     int seed = 7345;
     fill_rand(LEN, numbers, &seed);
 
-    gen_mergesort(LEN, sizeof(double), numbers, compare_double);
+    gen_mergesort(LEN, sizeof(double), numbers, compare_double, 0);
     bool sorted = is_sorted(LEN, sizeof(double), numbers, compare_double);
     printf("Array sorted %s\n", (sorted) ? "correctly" : "incorrectly");
     free(numbers);
