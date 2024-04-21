@@ -7,6 +7,10 @@
 #include <stdint.h>
 #include <string.h>
 #include <time.h>
+#include <stdio.h>
+#include <stdbool.h>
+
+#define LEN 1000000
 
 
 void
@@ -25,6 +29,22 @@ fill_rand(const size_t n, double arr[static n], const int* const seed) {
 
         arr[i] = (1.0*rand())/RAND_MAX;
     }
+}
+
+
+int
+compare_double(const void* a, const void* b) {
+
+    if (a > b) {
+
+        return 1;
+
+    } else if (a < b) {
+
+        return -1;
+    }
+
+    return 0;
 }
 
 
@@ -97,8 +117,42 @@ gen_mergesort(const size_t len, const size_t size, void* arr,
 }
 
 
+bool
+is_sorted(const size_t len, const size_t size, void* arr,
+              int(*comp)(const void*, const void*)) {
+    
+    for (size_t i = 0; i < len - 1; i++) {
+        
+        if (comp((uint8_t*)arr + size*i, 
+                 (uint8_t*)arr + size*(i + 1)) > 0) {
+
+            return false;
+        }
+    }
+    return true;
+}
+
+
 int
 main(int argc, char* argv[static argc]) {
+    
+    if (argc != 2) {
+        fprintf(stderr, "Usage: %s K\n", argv[0]);
+        return EXIT_FAILURE;
+    }
 
+    double* numbers = calloc(LEN, sizeof(double));
+    if (!numbers) {
+        fprintf(stderr, "Memory allocation failed!\n");
+        return EXIT_FAILURE;
+    }
+
+    int seed = 7345;
+    fill_rand(LEN, numbers, &seed);
+
+    gen_mergesort(LEN, sizeof(double), numbers, compare_double);
+    bool sorted = is_sorted(LEN, sizeof(double), numbers, compare_double);
+    printf("Array sorted %s\n", (sorted) ? "correctly" : "incorrectly");
+    free(numbers);
     return EXIT_SUCCESS;
 }
