@@ -50,22 +50,30 @@ compare_double(const void* a, const void* b) {
 
 int
 gen_mergesort(const size_t len, const size_t size, void* arr,
-              int(*comp)(const void*, const void*)) {
+              int(*comp)(const void*, const void*), int8_t thread_depth) {
     
     if (len == 1) {
 
         return 0;
     }
 
+    if (thread_depth < 0) {
+
+        thread_depth = 0;
+    }
+
     const size_t len_left = len/2;
     const size_t len_right = (len + 1)/2;
     uint8_t* left = arr;
     uint8_t* right = (uint8_t*)arr + size*len_left;
+    
+    if (!thread_depth) {
 
-    if (gen_mergesort(len_left, size, left, comp) ||
-        gen_mergesort(len_right, size, right, comp)) {
+        if (gen_mergesort(len_left, size, left, comp, thread_depth - 1) ||
+            gen_mergesort(len_right, size, right, comp, thread_depth - 1)) {
 
-        return 1;
+            return 1;
+        }
     }
     
     uint8_t* new_arr = calloc(len, size);
