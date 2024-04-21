@@ -3,9 +3,12 @@ BIN_DIR := bin
 TARGET_SRC := $(wildcard *.c)
 TARGET_EXE := $(TARGET_SRC:%.c=$(BIN_DIR)/%)
 
-.PHONY: all
+.PHONY: all clean
 
 all: $(TARGET_EXE) | $(BIN_DIR)
+
+clean:
+	rm -vrf $(BIN_DIR)
 
 $(BIN_DIR):
 	mkdir -p $@
