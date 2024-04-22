@@ -30,3 +30,6 @@ $(BIN_DIR)/ch13 : ch13.c | $(BIN_DIR)
 
 $(BIN_DIR)/% : %.c | $(BIN_DIR)
 	gcc $< $(CFLAGS) -o $@
+
+% : %.c | $(BIN_DIR)
+	gcc $< $(CFLAGS) -o $(BIN_DIR)/$@
