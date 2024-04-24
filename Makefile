@@ -1,16 +1,20 @@
 CFLAGS := -g -Wall -Werror -Wpedantic
 BIN_DIR := bin
+ASSETS_DIR := assets
 TARGET_SRC := $(wildcard *.c)
 TARGET_EXE := $(TARGET_SRC:%.c=$(BIN_DIR)/%)
 
 .PHONY: all clean
 
-all: $(TARGET_EXE) | $(BIN_DIR)
+all: $(TARGET_EXE) | $(BIN_DIR) $(ASSETS_DIR)
 
 clean:
 	rm -vrf $(BIN_DIR)
 
 $(BIN_DIR):
+	mkdir -p $@
+
+$(ASSETS_DIR):
 	mkdir -p $@
 
 $(BIN_DIR)/ch2 : ch2.c | $(BIN_DIR)
@@ -27,6 +31,9 @@ $(BIN_DIR)/ch6 : ch6.c | $(BIN_DIR)
 
 $(BIN_DIR)/ch13 : ch13.c | $(BIN_DIR)
 	gcc $< -lm $(CFLAGS) -o $@
+
+$(BIN_DIR)/ch11 : ch11.c | $(BIN_DIR) $(ASSETS_DIR)
+	gcc $< $(CFLAGS) -o $@
 
 $(BIN_DIR)/% : %.c | $(BIN_DIR)
 	gcc $< $(CFLAGS) -o $@
