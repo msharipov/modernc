@@ -533,7 +533,7 @@ main (int argc, char* argv[]) {
                 goto fail_reg_data;
             }
 
-            out = fopen("pictures/out.pgm", "wb");
+            out = fopen("assets/out.pgm", "wb");
             break;
 
         case 6:
@@ -544,7 +544,7 @@ main (int argc, char* argv[]) {
                 goto fail_reg_data;
             }
 
-            out = fopen("pictures/out.ppm", "wb");
+            out = fopen("assets/out.ppm", "wb");
             break;
 
         default:
