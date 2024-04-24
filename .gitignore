@@ -59,3 +59,4 @@ dkms.conf
 # Assets
 */assets/*
 bin/*
+*.ppm
