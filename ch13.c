@@ -11,25 +11,25 @@
 
 typedef double complex doubleC;
 
-enum Error_Type {
+typedef enum {
     
     SUCCESS = 0,
     UNDEFINED = 1,
     UNSTABLE = 2
-};
+} Error_Type;
 
 typedef struct Cmpl_Deriv_Result Cmpl_Deriv_Result;
 struct Cmpl_Deriv_Result {
 
     doubleC value;
-    enum Error_Type error;
+    Error_Type error;
 };
 
 typedef struct Newton_Root_Result Newton_Root_Result;
 struct Newton_Root_Result {
 
     doubleC value;
-    enum Error_Type error;
+    Error_Type error;
 };
 
 
@@ -160,7 +160,6 @@ find_root(doubleC(*f)(const doubleC), doubleC guess, double eps) {
             return result;
         }
 
-        //doubleC magnitude = cabs(deriv.value);
         f_guess = f(guess);
         if (isnan(creal(f_guess)) || isnan(cimag(f_guess)) ||
             isinf(creal(f_guess)) || isinf(cimag(f_guess))) {
