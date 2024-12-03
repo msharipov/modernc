@@ -1,4 +1,4 @@
-CFLAGS := -g -Wall -Werror -Wpedantic -Wextra
+CFLAGS := -g -Wall -Werror -Wpedantic -Wextra -fsanitize=address -fsanitize=leak -fsanitize=undefined
 BIN_DIR := bin
 ASSETS_DIR := assets
 TARGET_SRC := $(wildcard *.c)
