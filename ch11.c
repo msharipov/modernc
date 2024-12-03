@@ -454,7 +454,7 @@ main (int argc, char* argv[]) {
     strncpy(tol_str, argv[2], NUM_STR_LEN);
     char* end = NULL;
     tolerance = strtoul(argv[2], &end, 10);
-    if (tolerance < 0 || tolerance > IM_DEPTH) {
+    if (tolerance > IM_DEPTH) {
 
         fprintf(stderr, "Invalid tolerance!\n");
         return EXIT_FAILURE;
