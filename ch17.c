@@ -5,6 +5,7 @@
 *   - add regex grouping = DONE
 */
 
+#include <stddef.h>
 #include <wchar.h>
 #include <wctype.h>
 #include <locale.h>
@@ -436,7 +437,7 @@ regex_from_str(const wchar_t* str) {
     }
     
     RegexPattern* tail = head;
-    while ((end - str) < len) {
+    while ((end - str) < (ptrdiff_t)len) {
     
         RegexPattern* next_reg = regex_parse(end, &end, UNESCAPED);
         if (!next_reg) {
