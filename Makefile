@@ -1,4 +1,4 @@
-CFLAGS := -g -Wall -Werror -Wpedantic
+CFLAGS := -g -Wall -Werror -Wpedantic -Wextra
 BIN_DIR := bin
 ASSETS_DIR := assets
 TARGET_SRC := $(wildcard *.c)
