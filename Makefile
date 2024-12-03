@@ -1,3 +1,4 @@
+CC = gcc
 CFLAGS := -g -Wall -Werror -Wpedantic -Wextra -fsanitize=address -fsanitize=leak -fsanitize=undefined
 BIN_DIR := bin
 ASSETS_DIR := assets
@@ -18,43 +19,43 @@ $(ASSETS_DIR):
 	mkdir -p $@
 
 $(BIN_DIR)/ch2 : ch2.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $@
+	$(CC) $< -lm $(CFLAGS) -o $@
 
 $(BIN_DIR)/ch3 : ch3.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $@
+	$(CC) $< -lm $(CFLAGS) -o $@
 
 $(BIN_DIR)/ch5 : ch5.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $@
+	$(CC) $< -lm $(CFLAGS) -o $@
 
 $(BIN_DIR)/ch6 : ch6.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $@
+	$(CC) $< -lm $(CFLAGS) -o $@
 
 $(BIN_DIR)/ch13 : ch13.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $@
+	$(CC) $< -lm $(CFLAGS) -o $@
 
 $(BIN_DIR)/ch11 : ch11.c | $(BIN_DIR) $(ASSETS_DIR)
-	gcc $< $(CFLAGS) -o $@
+	$(CC) $< $(CFLAGS) -o $@
 
 $(BIN_DIR)/% : %.c | $(BIN_DIR)
-	gcc $< $(CFLAGS) -o $@
+	$(CC) $< $(CFLAGS) -o $@
 
 ch2 : ch2.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
 ch3 : ch3.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
 ch5 : ch5.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
 ch6 : ch6.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
 ch13 : ch13.c | $(BIN_DIR)
-	gcc $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< -lm $(CFLAGS) -o $(BIN_DIR)/$@
 
 ch11 : ch11.c | $(BIN_DIR) $(ASSETS_DIR)
-	gcc $< $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< $(CFLAGS) -o $(BIN_DIR)/$@
 
 % : %.c | $(BIN_DIR)
-	gcc $< $(CFLAGS) -o $(BIN_DIR)/$@
+	$(CC) $< $(CFLAGS) -o $(BIN_DIR)/$@
