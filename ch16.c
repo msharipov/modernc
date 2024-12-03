@@ -506,8 +506,7 @@ regex_first_match(const size_t buf_len, const char buf[],
 
 void
 regex_match_in_line(const size_t buf_len, const char buffer[],
-                const RegexPattern* const regex, size_t line,
-                IndexRange found_matches[]) {
+                const RegexPattern* const regex, IndexRange found_matches[]) {
     
     size_t matches_count = 0;
     IndexRange match = regex_first_match(buf_len, buffer, regex, 0);
@@ -638,7 +637,7 @@ main(int argc, char* argv[]) {
             return EXIT_FAILURE;
         }
 
-        regex_match_in_line(current_len, buffer, regex, line, found_matches);
+        regex_match_in_line(current_len, buffer, regex, found_matches);
         highlight_ranges(current_len, buffer, line, found_matches);
         
         for (size_t i = 0; found_matches[i].start < current_len; i++) {
