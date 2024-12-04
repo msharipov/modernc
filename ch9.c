@@ -36,7 +36,7 @@ main(int argc, char* argv[static argc]) {
 
     char N_str[MAX_INT_LENGTH + 1] = {0};
 
-    for (size_t number = 1; number < argc; number++) {
+    for (size_t number = 1; number < (size_t)argc; number++) {
 
         strncpy(N_str, argv[number], MAX_INT_LENGTH);
         size_t N = strtoull(N_str, 0, 10);
