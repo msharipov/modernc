@@ -8,7 +8,7 @@ LM_TARGET_EXE := $(LM_TARGET_SRC:%.c=$(BIN_DIR)/%)
 
 .PHONY: all clean
 
-all: $(TARGET_EXE) | $(BIN_DIR) $(ASSETS_DIR)
+all: $(TARGET_EXE) | $(BIN_DIR)
 
 clean:
 	rm -vrf $(BIN_DIR)
