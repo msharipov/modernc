@@ -131,7 +131,7 @@ generate_power_series(const size_t n, Powers arr[static (n + 1)]) {
 void
 update_power_series(const size_t n, Powers arr[static (n + 1)]) {
     
-    for (int64_t k = 0; k <= n; k++) {
+    for (size_t k = 0; k <= n; k++) {
     
         arr[k].s1 = (16*arr[k].s1) % (8*k + 1); 
         arr[k].s2 = (16*arr[k].s2) % (8*k + 4);
@@ -190,7 +190,7 @@ hex_sequence(const int64_t start, const int64_t stop,
     }
     
     const Powers ones = {1, 1, 1, 1};
-    for (size_t i = 0; i < stop + 1; i++) {
+    for (size_t i = 0; i < (size_t)stop + 1; i++) {
 
         powers[i] = ones;
     }
@@ -233,8 +233,8 @@ hex_sequence(const int64_t start, const int64_t stop,
 int
 main(int argc, char * argv[static argc]) {
 
-    int32_t start = 0;
-    int32_t stop = 0;
+    size_t start = 0;
+    size_t stop = 0;
     char N_str[21] = {0};
     char ** end = NULL;
     
@@ -258,7 +258,7 @@ main(int argc, char * argv[static argc]) {
     }
 
 
-    if (stop < start || start < 0) {
+    if (stop < start) {
 
         printf("Usage: ./ch3 [START] STOP\n");
         return EXIT_FAILURE;
